@@ -22,3 +22,18 @@ const free=new FlightState();free.complete=true;free.finishTime=90;free.paused=f
 const edge=new FlightState();edge.x=WORLD_HALF-50;edge.z=20;edge.paused=false;edge.step(.02,new Set());assert(!edge.crashed);assert(edge.vx<0);assert(boundaryAcceleration(-3900,3900)[0]>0&&boundaryAcceleration(-3900,3900)[1]<0);
 assert(terrainHeight(0,2400)>100);assert(terrainHeight(3500,-2000)<0);assert.equal(groundHeight(0,0),0);
 console.log('PASS: 8km world, seven unobstructed region spawns, continuous post-course flight, soft map edge, hills/ocean terrain');
+
+// Review regression: quarry columns reach sloped excavation ground without moving their tops.
+const quarryColumns=WORLD_OBJECTS.filter(o=>o.region===4&&o.material==='steel');assert.equal(quarryColumns.length,2);
+const quarryRoof=WORLD_OBJECTS.find(o=>o.region===4&&o.material==='roof');
+for(const column of quarryColumns){const [x,y,z]=column.position,[w,d,h]=column.size,top=z+h/2,bottom=z-h/2;assert(Math.abs(top-(quarryRoof.position[2]+quarryRoof.size[2]/2))<1e-9);for(const dx of [-w/2,w/2])for(const dy of [-d/2,d/2])assert(bottom<terrainHeight(x+dx,y+dy));const oldBottom=quarryRoof.position[2]-25,underOldBase=(terrainHeight(x,y)+oldBottom)/2;assert(segmentHitsSolid([x,y,underOldBase],[x,y,underOldBase]),'missing collision below old support base')}
+assert.equal(quarryRoof.size[2],2);
+console.log('PASS: grounded quarry supports, filled collision gaps, unchanged column tops/roof');
+
+import {SEA_LEVEL,surfaceClearance,lowAltitudeWarning} from './dist/world.mjs';
+const lowSea=new FlightState();lowSea.x=0;lowSea.y=-1400;lowSea.z=SEA_LEVEL+.6;lowSea.paused=false;lowSea.vz=-.4;let warnedBeforeContact=false;
+for(let i=0;i<600&&surfaceClearance(lowSea.x,lowSea.y,lowSea.z)>.09;i++){lowSea.step(1/120,new Set(),{throttle:-.2});if(lowAltitudeWarning(lowSea)){assert(surfaceClearance(lowSea.x,lowSea.y,lowSea.z)<.35);warnedBeforeContact=true}}
+assert(warnedBeforeContact);assert(surfaceClearance(lowSea.x,lowSea.y,lowSea.z)<.1);
+const lowLand=new FlightState();lowLand.paused=false;lowLand.z=.2;assert(lowAltitudeWarning(lowLand));lowLand.paused=true;assert(!lowAltitudeWarning(lowLand));lowLand.paused=false;lowLand.crashed=true;assert(!lowAltitudeWarning(lowLand));
+assert(Math.abs(surfaceClearance(0,-1400,SEA_LEVEL+.2)-.2)<1e-9);assert(!lowAltitudeWarning({x:0,y:-1400,z:SEA_LEVEL+.35,paused:false,crashed:false}));
+console.log('PASS: shared land/sea clearance, LOW ALTITUDE before water contact, paused/crashed suppression');
