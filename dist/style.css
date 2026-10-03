@@ -4,3 +4,5 @@
 .dots{max-width:180px;flex-wrap:wrap;margin-left:auto}.dots i{width:7px}@media(max-width:650px){.dots{max-width:122px;gap:3px}.dots i{width:4px}}
 
 #regionLabel{position:absolute;top:48px;left:0;font-size:11px;letter-spacing:.08em;color:#d2dbc6}#areaSelect{display:block;width:100%;font:13px inherit;color:#f2f5e8;background:#15252c;border:1px solid #8a9b8a;padding:12px;margin:10px 0}#relocate{width:100%;margin-bottom:20px}@media(max-height:520px){#regionLabel{top:22px;left:150px;font-size:10px}}
+
+#homeNav{position:fixed;left:var(--edge);top:146px;font-size:12px;font-weight:normal;text-shadow:var(--ink-shadow)}@media(max-width:650px){#homeNav{top:137px;font-size:10px}}@media(max-height:520px){#homeNav{top:86px;left:var(--edge);font-size:10px}}

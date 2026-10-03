@@ -16,9 +16,17 @@ console.log('PASS: both hangar doorways, service tunnel, open window, solid wall
 let previous=[0,0,1.2];for(const gate of GATES){assert(!segmentHitsSolid(previous,gate),'blocked course segment '+JSON.stringify(gate));previous=gate}console.log('PASS: every straight gate-to-gate route clears building collision volumes');
 
 import {WORLD_SIZE,WORLD_HALF,REGIONS,regionSpawn,terrainHeight,groundHeight,boundaryAcceleration,WORLD_OBJECTS} from './dist/world.mjs';
-assert.equal(WORLD_SIZE,8000);assert.equal(REGIONS.length,7);assert(WORLD_OBJECTS.length>50);
+assert.equal(WORLD_SIZE,8000);assert.equal(REGIONS.length,8);assert(WORLD_OBJECTS.length>50);
 for(let i=0;i<REGIONS.length;i++){const p=regionSpawn(i);assert(!segmentHitsSolid(p,p),REGIONS[i].label+' blocked spawn');assert(p[2]>groundHeight(p[0],p[1])+5);const f=new FlightState();f.relocate(i);assert(f.paused);f.paused=false;f.step(.02,new Set(),{pitch:.3});assert(!f.crashed)}
 const free=new FlightState();free.complete=true;free.finishTime=90;free.paused=false;free.vy=3;free.step(.02,new Set());assert(free.y>0);assert.equal(free.finishTime,90);
-const edge=new FlightState();edge.x=WORLD_HALF-50;edge.z=20;edge.paused=false;edge.step(.02,new Set());assert(!edge.crashed);assert(edge.vx<0);assert(boundaryAcceleration(-3900,3900)[0]>0&&boundaryAcceleration(-3900,3900)[1]<0);
+const edge=new FlightState();edge.x=12000-50;edge.z=20;edge.paused=false;edge.step(.02,new Set());assert(!edge.crashed);assert(edge.vx<0);assert(boundaryAcceleration(-11900,11900)[0]>0&&boundaryAcceleration(-11900,11900)[1]<0);
 assert(terrainHeight(0,2400)>100);assert(terrainHeight(3500,-2000)<0);assert.equal(groundHeight(0,0),0);
-console.log('PASS: 8km world, seven unobstructed region spawns, continuous post-course flight, soft map edge, hills/ocean terrain');
+console.log('PASS: 8km world, eight unobstructed region spawns, continuous post-course flight, soft map edge, hills/ocean terrain');
+
+import {SEA_LEVEL,FLIGHT_HALF,isOverWater,homeNavigation} from './dist/world.mjs';
+assert.equal(FLIGHT_HALF,12000);assert(isOverWater(0,-1400));assert.equal(groundHeight(0,-1400),SEA_LEVEL);
+const sea=new FlightState();sea.relocate(7);sea.paused=false;assert(sea.z>SEA_LEVEL+5);sea.x=5000;sea.y=-5000;sea.z=SEA_LEVEL+3;sea.vy=-8;for(let i=0;i<240;i++)sea.step(1/60,new Set());assert(!sea.crashed);assert(sea.y<-5000);assert(Math.abs(sea.z-(SEA_LEVEL+3))<.001);
+const crossing=new FlightState();crossing.paused=false;crossing.z=60;for(let y=20;y>=-1600;y-=5){crossing.y=y;crossing.step(.01,new Set());assert(!crossing.crashed)}for(let y=-1600;y<=20;y+=5){crossing.y=y;crossing.step(.01,new Set());assert(!crossing.crashed)}
+const ditch=new FlightState();ditch.relocate(7);ditch.paused=false;ditch.z=SEA_LEVEL+.081;ditch.vz=-1;ditch.step(.03,new Set());assert(ditch.crashed&&ditch.ditched);
+assert.equal(homeNavigation(0,-1000).bearing,0);assert.equal(homeNavigation(1000,0).bearing,270);assert.equal(homeNavigation(0,-1000).distance,1000);
+console.log('PASS: offshore spawn, sea-level hover beyond former map bounds, coastal crossing/return, ditching, HOME bearing');
