@@ -24,7 +24,7 @@ Deploy `dist/` as static assets. Three.js 0.180.0 is vendored in `dist/vendor/`,
 - Left / Right or Q / E: yaw
 - C or camera button: FPV / chase
 - R: reset
-- Touch: on-screen forward/reverse, yaw and altitude buttons
+- Touch: proportional Mode 2 dual sticks; left = throttle/yaw, right = pitch/roll
 
 Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding but preserves horizontal inertia; use opposite input to brake. Fly through all eight gates in order. The FPV camera tilts 11.5 degrees upward and banks with the frame.
 
@@ -32,10 +32,10 @@ Release movement keys to level the drone. Stabilized ANGLE mode assists altitude
 
 - `dist/flight.mjs`: deterministic lightweight drone motion and race state
 - `dist/main.mjs`: procedural Three.js scenery, ducted quadcopter, camera, post-process and UI integration
-- `dist/index.html`, `dist/style.css`: Japanese OSD, keyboard and touch UI
+- `dist/index.html`, `dist/style.css`: compact English radio-style OSD, keyboard and dual-stick touch UI
 - `test-flight.mjs`: simulation regression checks
 - `serve.mjs`: dependency-free static development server
 
 ## Limitations
 
-Arcade physics, not a flight-training or hardware-control tool. Stabilized flight rather than full acro/rate mode. Battery and link numbers are clearly marked SIM and are simulated OSD decoration. Ground, field boundary and hangar-body collisions are checked; the entire scenery does not have mesh-accurate collision. No multiplayer, gamepad mapping, real radio connection, or persistent leaderboard. WebGL2-capable modern browser required.
+Arcade physics, not a flight-training or hardware-control tool. Stabilized flight rather than full acro/rate mode. Video is clearly marked VTX SIM; no fabricated live battery or radio-link readings. Ground, field boundary and hangar-body collisions are checked; the entire scenery does not have mesh-accurate collision. No multiplayer, gamepad mapping, real radio connection, or persistent leaderboard. WebGL2-capable modern browser required.
