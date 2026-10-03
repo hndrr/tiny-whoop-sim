@@ -30,3 +30,18 @@ const crossing=new FlightState();crossing.paused=false;crossing.z=60;for(let y=2
 const ditch=new FlightState();ditch.relocate(7);ditch.paused=false;ditch.z=SEA_LEVEL+.081;ditch.vz=-1;ditch.step(.03,new Set());assert(ditch.crashed&&ditch.ditched);
 assert.equal(homeNavigation(0,-1000).bearing,0);assert.equal(homeNavigation(1000,0).bearing,270);assert.equal(homeNavigation(0,-1000).distance,1000);
 console.log('PASS: offshore spawn, sea-level hover beyond former map bounds, coastal crossing/return, ditching, HOME bearing');
+
+// Review regression: quarry columns reach sloped excavation ground without moving their tops.
+const quarryColumns=WORLD_OBJECTS.filter(o=>o.region===4&&o.material==='steel');assert.equal(quarryColumns.length,2);
+const quarryRoof=WORLD_OBJECTS.find(o=>o.region===4&&o.material==='roof');
+for(const column of quarryColumns){const [x,y,z]=column.position,[w,d,h]=column.size,top=z+h/2,bottom=z-h/2;assert(Math.abs(top-(quarryRoof.position[2]+quarryRoof.size[2]/2))<1e-9);for(const dx of [-w/2,w/2])for(const dy of [-d/2,d/2])assert(bottom<terrainHeight(x+dx,y+dy));const oldBottom=quarryRoof.position[2]-25,underOldBase=(terrainHeight(x,y)+oldBottom)/2;assert(segmentHitsSolid([x,y,underOldBase],[x,y,underOldBase]),'missing collision below old support base')}
+assert.equal(quarryRoof.size[2],2);
+console.log('PASS: grounded quarry supports, filled collision gaps, unchanged column tops/roof');
+
+import {surfaceClearance,lowAltitudeWarning} from './dist/world.mjs';
+const lowSea=new FlightState();lowSea.relocate(7);lowSea.paused=false;lowSea.z=SEA_LEVEL+.6;lowSea.vz=-.4;let warnedBeforeDitch=false;
+for(let i=0;i<600&&!lowSea.crashed;i++){lowSea.step(1/120,new Set(),{throttle:-.2});if(lowAltitudeWarning(lowSea)){assert(!lowSea.ditched);assert(surfaceClearance(lowSea.x,lowSea.y,lowSea.z)<.35);warnedBeforeDitch=true}}
+assert(warnedBeforeDitch&&lowSea.ditched);assert(!lowAltitudeWarning(lowSea));
+const lowLand=new FlightState();lowLand.paused=false;lowLand.z=.2;assert(lowAltitudeWarning(lowLand));lowLand.paused=true;assert(!lowAltitudeWarning(lowLand));
+assert(Math.abs(surfaceClearance(0,-1400,SEA_LEVEL+.2)-.2)<1e-9);assert(!lowAltitudeWarning({x:0,y:-1400,z:SEA_LEVEL+.35,paused:false,crashed:false}));
+console.log('PASS: shared land/sea clearance, LOW ALTITUDE before DITCHED, warning suppressed while paused/crashed');

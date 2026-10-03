@@ -12,6 +12,7 @@ export const REGIONS=[
  {id:'windfarm',label:'WEST WIND RIDGE',x:-1550,y:1850,radius:170},
  {id:'offshore',label:'OFFSHORE',x:0,y:-1400,radius:100}
 ];
+const QUARRY_INDEX=REGIONS.findIndex(region=>region.id==='quarry');
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const smooth=v=>{v=clamp(v,0,1);return v*v*(3-2*v)};
 function naturalHeight(x,y){
  const coast=Math.min(1950+250*Math.sin(y/650)-Math.abs(x+260*Math.sin(y/1100)),y+410+110*Math.sin(x/400),3400-y);
@@ -21,7 +22,7 @@ function naturalHeight(x,y){
  return -9+inland*(25+ridge+erosion);
 }
 export const REGION_ELEVATIONS=REGIONS.map(r=>r.id==='offshore'?SEA_LEVEL:r.id==='airfield'?0:r.id==='harbor'?2:r.id==='lighthouse'?3:Math.max(2,naturalHeight(r.x,r.y)));
-export function terrainHeight(x,y){let h=naturalHeight(x,y);for(let i=0;i<REGIONS.length;i++){const r=REGIONS[i];if(r.id==='offshore')continue;const d=Math.hypot(x-r.x,y-r.y);if(d<r.radius+110)h=h+(REGION_ELEVATIONS[i]-h)*(1-smooth((d-r.radius)/110))}const q=REGIONS[4];h-=32*(1-smooth(Math.hypot(x-q.x,y-q.y)/115));return h}
+export function terrainHeight(x,y){let h=naturalHeight(x,y);for(let i=0;i<REGIONS.length;i++){const r=REGIONS[i];if(r.id==='offshore')continue;const d=Math.hypot(x-r.x,y-r.y);if(d<r.radius+110)h=h+(REGION_ELEVATIONS[i]-h)*(1-smooth((d-r.radius)/110))}const q=REGIONS[QUARRY_INDEX];h-=32*(1-smooth(Math.hypot(x-q.x,y-q.y)/115));return h}
 export function groundHeight(x,y){return Math.max(SEA_LEVEL,terrainHeight(x,y))}
 export function nearestRegion(x,y){let best=REGIONS[0],distance=Infinity;for(const r of REGIONS){const d=Math.hypot(x-r.x,y-r.y);if(d<distance){best=r;distance=d}}return {...best,distance}}
 // Gentle spring return near the outer chart edge, never a boundary-triggered crash.
@@ -38,7 +39,7 @@ for(const y of [-7.7,7.7])add(2,[0,y,33],[250,.25,1.8],'steel');
 // Settlement: open doorways and lit service courts between six houses.
 for(let i=0;i<6;i++){const x=(i%3)*32-32,y=Math.floor(i/3)*38-19,w=18,d=16,h=6;add(3,[x,y,-.1],[w,d,.2],'floor');for(const sx of [-1,1])add(3,[x+sx*w/2,y,h/2],[.25,d,h],'wall');add(3,[x,y+d/2,h/2],[w,.25,h],'wall');for(const sx of [-1,1])add(3,[x+sx*5.5,y-d/2,h/2],[7,.25,h],'wall');add(3,[x,y-d/2,4.6],[4,.25,2.8],'wall');add(3,[x,y,h+.15],[w+1,d+1,.3],'roof');}
 // Quarry works: processing frame, spoil stacks and service sheds.
-for(const x of [-90,-65])add(4,[x,0,13],[1.4,1.4,26],'steel');add(4,[-77.5,0,25],[40,14,2],'roof');for(let i=0;i<7;i++)add(4,[-80+i*25,125,3],[13,7,6],i%2?'crate':'container');
+for(const x of [-90,-65]){const r=REGIONS[QUARRY_INDEX],halfWidth=.7,top=REGION_ELEVATIONS[QUARRY_INDEX]+26;const bottom=Math.min(...[-halfWidth,halfWidth].flatMap(dx=>[-halfWidth,halfWidth].map(dy=>terrainHeight(r.x+x+dx,r.y+dy))))-.15;const height=top-bottom;add(QUARRY_INDEX,[x,0,(top+bottom)/2-REGION_ELEVATIONS[QUARRY_INDEX]],[1.4,1.4,height],'steel')}add(QUARRY_INDEX,[-77.5,0,25],[40,14,2],'roof');for(let i=0;i<7;i++)add(QUARRY_INDEX,[-80+i*25,125,3],[13,7,6],i%2?'crate':'container');
 // Lighthouse point and service hut. Cylindrical surfaces use conservative box collision.
 add(5,[0,0,20],[7,7,40],'wall','cylinder');add(5,[0,0,41],[10,10,3],'glass','cylinder');add(5,[0,0,43],[12,12,.8],'roof','cylinder');add(5,[16,14,2.5],[14,10,5],'wall');
 // Turbine ridge: slender towers spread across the hillside.
@@ -50,3 +51,6 @@ export function isOverWater(x,y){return terrainHeight(x,y)<SEA_LEVEL}
 export function homeNavigation(x,y){const distance=Math.hypot(x,y),bearing=((Math.atan2(-x,-y)*180/Math.PI)%360+360)%360;return {distance,bearing}}
 // Offshore reference buoys mark the launch area without adding fake land.
 for(const [x,y] of [[-25,-20],[25,-20],[0,40]]){add(7,[x,y,.35],[2.2,2.2,.7],'yellow','cylinder');add(7,[x,y,1.6],[.28,.28,2.5],'steel','cylinder');add(7,[x,y,2.9],[.7,.7,.2],'container','cylinder')}
+
+export function surfaceClearance(x,y,z){return Math.max(0,z-groundHeight(x,y))}
+export function lowAltitudeWarning(state){return !state.paused&&!state.crashed&&surfaceClearance(state.x,state.y,state.z)<.35}
