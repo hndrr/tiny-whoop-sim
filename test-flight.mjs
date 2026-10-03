@@ -14,3 +14,11 @@ const descend=new FlightState();descend.paused=false;descend.z=10;for(let i=0;i<
 console.log('PASS: both hangar doorways, service tunnel, open window, solid walls/roof, clear gates, touch descent');
 
 let previous=[0,0,1.2];for(const gate of GATES){assert(!segmentHitsSolid(previous,gate),'blocked course segment '+JSON.stringify(gate));previous=gate}console.log('PASS: every straight gate-to-gate route clears building collision volumes');
+
+import {WORLD_SIZE,WORLD_HALF,REGIONS,regionSpawn,terrainHeight,groundHeight,boundaryAcceleration,WORLD_OBJECTS} from './dist/world.mjs';
+assert.equal(WORLD_SIZE,8000);assert.equal(REGIONS.length,7);assert(WORLD_OBJECTS.length>50);
+for(let i=0;i<REGIONS.length;i++){const p=regionSpawn(i);assert(!segmentHitsSolid(p,p),REGIONS[i].label+' blocked spawn');assert(p[2]>groundHeight(p[0],p[1])+5);const f=new FlightState();f.relocate(i);assert(f.paused);f.paused=false;f.step(.02,new Set(),{pitch:.3});assert(!f.crashed)}
+const free=new FlightState();free.complete=true;free.finishTime=90;free.paused=false;free.vy=3;free.step(.02,new Set());assert(free.y>0);assert.equal(free.finishTime,90);
+const edge=new FlightState();edge.x=WORLD_HALF-50;edge.z=20;edge.paused=false;edge.step(.02,new Set());assert(!edge.crashed);assert(edge.vx<0);assert(boundaryAcceleration(-3900,3900)[0]>0&&boundaryAcceleration(-3900,3900)[1]<0);
+assert(terrainHeight(0,2400)>100);assert(terrainHeight(3500,-2000)<0);assert.equal(groundHeight(0,0),0);
+console.log('PASS: 8km world, seven unobstructed region spawns, continuous post-course flight, soft map edge, hills/ocean terrain');
