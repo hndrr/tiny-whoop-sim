@@ -1,0 +1,1 @@
+{"name":"tiny-whoop-sim","version":"1.0.0","private":true,"type":"module","description":"Tiny Whoop-inspired coastal drone racing prototype built with Three.js","scripts":{"start":"node serve.mjs","test":"node test-flight.mjs","check":"node --check dist/main.mjs && node --check dist/flight.mjs","build":"npm run check"},"engines":{"node":">=20"}}
