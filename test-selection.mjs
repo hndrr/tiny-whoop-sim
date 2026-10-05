@@ -43,3 +43,29 @@ renderer.setViewport=()=>{throw Error('DPR-scaled viewport must not be changed')
 renderer.render=()=>{seenTarget=renderer.target;assert.deepEqual(seenTarget.viewport.toArray(),[0,0,360,200]);assert.equal(seenTarget.scissorTest,false)};
 capturePreview(renderer,scene,new T.Camera(),360,200);assert.equal(renderer.target,oldTarget);
 console.log('PASS: high-DPR previews use target physical-pixel viewport without changing global viewport/scissor');
+
+// Run real integration initialization/apply/reset with only DOM/viewer construction stubbed.
+const {setupFlightSelection}=await import('./dist/selection-integration.mjs');
+const {FlightState}=await import('./dist/flight.mjs');
+const {groundHeight}=await import('./dist/world.mjs');
+function integrationFor(selection){
+ globalThis.localStorage={getItem:()=>JSON.stringify(selection)};
+ const oldSelect={before(){},value:''},oldButton={},brand={firstChild:{nodeType:3,textContent:''}};
+ globalThis.document={createElement:()=>({setAttribute(){}}),getElementById:id=>id==='areaSelect'?oldSelect:oldButton,querySelector:selector=>selector==='.brand'?brand:{}};
+ const state=new FlightState();let callbacks,vehicle,clears=0;
+ const api=setupFlightSelection({state,setVehicle:id=>vehicle=id,clearInputs:()=>clears++,updateHUD(){},closeHelp(){},selectorFactory:options=>{callbacks=options;return {open(){}}}});
+ return {state,api,get callbacks(){return callbacks},get vehicle(){return vehicle},get clears(){return clears}};
+}
+for(const vehicle of ['whoop75','micro65','scout85']){
+ const session=integrationFor({region:'airfield',vehicle});assert.equal(session.state.z,1.2,'initial airfield pad');assert.equal(session.vehicle,vehicle);
+ Object.assign(session.state,{x:90,y:100,z:34,crashed:true,paused:false,elapsed:12,gate:3});session.api.reset();assert.equal(session.state.z,1.2,'reset/crash restart returns to pad');assert.equal(session.state.crashed,false);assert.equal(session.state.paused,true);assert.equal(session.state.gate,0);assert.equal(session.vehicle,vehicle);assert.equal(session.clears,1);
+}
+for(const region of REGIONS.slice(1)){
+ const session=integrationFor({region:region.id,vehicle:'micro65'});assert.equal(session.state.region,REGIONS.indexOf(region));assert.equal(session.state.z,groundHeight(session.state.x,session.state.y)+7);
+ session.state.z+=100;session.state.crashed=true;session.api.reset();assert.equal(session.state.z,groundHeight(session.state.x,session.state.y)+7);assert.equal(session.state.crashed,false);
+}
+const session=integrationFor({region:'airfield',vehicle:'whoop75'});Object.assign(session.state,{x:8,y:12,z:23,elapsed:17,gate:2});
+session.callbacks.onApply({region:'airfield',vehicle:'scout85'},{areaChanged:false,vehicleChanged:true});assert.deepEqual([session.state.x,session.state.y,session.state.z,session.state.elapsed,session.state.gate],[8,12,23,17,2],'aircraft-only selection preserves flight');
+session.callbacks.onApply({region:'harbor',vehicle:'scout85'},{areaChanged:true,vehicleChanged:false});
+session.callbacks.onApply({region:'airfield',vehicle:'scout85'},{areaChanged:true,vehicleChanged:false});assert.equal(session.state.z,7,'explicit relocation retains historical airborne spawn');session.api.reset();assert.equal(session.state.z,1.2,'subsequent race reset uses pad');
+console.log('PASS: real selection initialization/reset at 1.2m race pad, crash recovery, other-region spawns, explicit 7m relocation and aircraft-only position preservation');

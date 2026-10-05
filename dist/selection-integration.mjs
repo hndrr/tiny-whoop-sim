@@ -18,21 +18,26 @@ export function withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,a
   return render(camera);
  }finally{for(const [object,value] of saved)object.visible=value;skyDome.position.copy(skyPosition);sun.position.copy(sunPosition);sun.target.position.copy(sunTarget)}
 }
-export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,getDrone,state,clearInputs,updateHUD,setVehicle,closeHelp}){
+// Startup/reset uses the original race pad; explicit relocation keeps its 7m spawn.
+export function resetSelectedFlight(state,region){
+ const index=REGIONS.findIndex(r=>r.id===region);
+ if(index<=0)state.reset();else state.relocate(index);
+}
+export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,getDrone,state,clearInputs,updateHUD,setVehicle,closeHelp,selectorFactory=createFlightSelector}){
  let selected=loadSelection();
- setVehicle(selected.vehicle);state.relocate(REGIONS.findIndex(r=>r.id===selected.region));
+ setVehicle(selected.vehicle);resetSelectedFlight(state,selected.region);
  const button=document.createElement('button');button.id='chooseFlight';button.type='button';button.textContent='CHOOSE AREA + AIRCRAFT';
  const summary=document.createElement('p');summary.className='flight-selection-summary';summary.id='flightSelectionSummary';summary.setAttribute('aria-live','polite');
  const oldSelect=document.getElementById('areaSelect'),oldButton=document.getElementById('relocate');
  const oldLabel=document.querySelector('label[for="areaSelect"]');if(oldLabel)oldLabel.hidden=true;oldSelect.hidden=true;oldButton.hidden=true;oldSelect.before(button,summary);
  const brand=document.querySelector('.brand');let brandTitle=brand?.firstChild;
  function refresh(){const vehicle=getVehicle(selected.vehicle),region=REGIONS.find(r=>r.id===selected.region);summary.textContent=`${vehicle.name} / ${region.label}`;if(brandTitle?.nodeType===3)brandTitle.textContent=vehicle.name;oldSelect.value=String(REGIONS.indexOf(region));}
- const selector=createFlightSelector({renderer,getSelection:()=>selected,
+ const selector=selectorFactory({renderer,getSelection:()=>selected,
   captureStage:index=>withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,drone:getDrone()},index,camera=>capturePreview(renderer,scene,camera,360,200)),
   onOpen(){state.paused=true;clearInputs();closeHelp();updateHUD()},
   onApply(next,{areaChanged,vehicleChanged}){if(vehicleChanged)setVehicle(next.vehicle);if(areaChanged)state.relocate(REGIONS.findIndex(r=>r.id===next.region));selected=next;state.paused=true;clearInputs();refresh();updateHUD()},
   onClose(){state.paused=true;clearInputs();updateHUD()}
  });
  button.onclick=()=>selector.open();refresh();
- return {selector,get selected(){return {...selected}},reset(){state.relocate(REGIONS.findIndex(r=>r.id===selected.region));clearInputs();updateHUD()}};
+ return {selector,get selected(){return {...selected}},reset(){resetSelectedFlight(state,selected.region);clearInputs();updateHUD()}};
 }
