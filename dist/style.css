@@ -45,3 +45,10 @@
 }
 
 @media(pointer:fine) and (max-width:600px) and (max-height:700px){body.flight-idle #metrics,body.flight-idle>footer{visibility:hidden}}
+
+/* Adjust only the rendered video; leave the radio and telemetry readable. */
+#brightnessControl{position:fixed;top:max(20px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:164px;padding:4px 6px 0;background:#0b192870;border-radius:5px;text-shadow:var(--ink-shadow)}
+#brightnessControl label{display:block;font-size:9px;letter-spacing:.05em;white-space:nowrap}#brightnessValue{float:right;font-variant-numeric:tabular-nums}
+#brightnessControl>div{display:flex;align-items:center;gap:4px}#brightnessSlider{width:100%;min-width:0;height:44px;margin:0;accent-color:#cee5ba;cursor:pointer;touch-action:pan-y}#brightnessReset{min-width:44px;width:44px;height:44px;padding:0;background:transparent;border:0;font-size:20px}#brightnessSlider:focus-visible{outline:2px solid #eff5df;outline-offset:2px}
+@media(max-width:450px){#brightnessControl{width:140px;top:max(18px,env(safe-area-inset-top));padding:3px 4px 0}#brightnessControl label{font-size:8px}}
+@media(max-height:520px){#brightnessControl{top:10px}}

@@ -3,10 +3,10 @@ const clamp = value => Math.max(-1, Math.min(1, value));
 export function controlInput(keys, axes = {}) {
   const k = code => keys.has(code) ? 1 : 0;
   return {
-    pitch: clamp(k('KeyW') - k('KeyS') + (axes.pitch || 0)),
-    roll: clamp(k('KeyD') - k('KeyA') + (axes.roll || 0)),
-    yaw: clamp(k('ArrowLeft') + k('KeyQ') - k('ArrowRight') - k('KeyE') + (axes.yaw || 0)),
-    throttle: clamp(k('ArrowUp') - k('ArrowDown') + (axes.throttle || 0)),
+    pitch: clamp(k('ArrowUp') - k('ArrowDown') + (axes.pitch || 0)),
+    roll: clamp(k('ArrowRight') - k('ArrowLeft') + (axes.roll || 0)),
+    yaw: clamp(k('KeyA') + k('KeyQ') - k('KeyD') - k('KeyE') + (axes.yaw || 0)),
+    throttle: clamp(k('KeyW') - k('KeyS') + (axes.throttle || 0)),
   };
 }
 

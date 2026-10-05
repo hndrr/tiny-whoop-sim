@@ -18,13 +18,12 @@ Deploy `dist/` as static assets. Three.js 0.180.0 is vendored in `dist/vendor/`,
 ## Controls
 
 - P or Space: arm / pause / resume
-- W / S: forward / backward pitch
-- A / D: left / right roll
-- Up / Down: climb / descend
-- Left / Right or Q / E: yaw
+- Left hand: W / S climb / descend; A / D yaw left / right
+- Right hand: Up / Down forward / backward pitch; Left / Right left / right roll
+- Q / E: alternate yaw left / right (optional aliases)
 - C or camera button: FPV / chase
 - R: reset
-- Desktop: always-visible dual sticks show the actual combined keyboard / pointer input; faint key labels brighten while held. Drag either stick with the primary mouse button, optionally using keys for the other stick. One mouse controls one stick at a time.
+- Desktop: left WASD and right arrow-key labels match the physical keyboard; always-visible dual sticks show the actual combined keyboard / pointer input; faint key labels brighten while held. Drag either stick with the primary mouse button, optionally using keys for the other stick. One mouse controls one stick at a time.
 - Touch: proportional Mode 2 dual sticks; left = throttle/yaw, right = pitch/roll
 
 Releasing a drag recenters that stick; blur, tab hiding, reset, pause and setup clear all held inputs.
@@ -68,3 +67,7 @@ Open SETUP → CHOOSE AREA + AIRCRAFT for rendered previews of all eight real in
 Apply commits the selection; Cancel/Escape discards pending changes. Changing only aircraft preserves position/progress; changing area starts a new paused flight. Reset preserves the chosen area/aircraft. Selection is remembered on this browser when local storage is available. Previews reuse the flight renderer and release temporary GPU targets; preview failures leave selection usable.
 
 Verification: Node physics, normalized controls, pointer lifecycle, airframe geometry, saved-selection recovery, reversible stage rendering and render-target cleanup checks pass. Real browser visual/input validation is still pending: the available cloud browser blocked localhost preview access, and standalone cloud Chromium could not open its process socket. No screenshots or physical-device frame-rate claims are included.
+
+## Video brightness
+
+The always-visible BRIGHTNESS slider adjusts the 3D flight video in both FPV and chase views from 60% to 180%, without changing HTML telemetry or control brightness. 100% preserves the original look; the adjacent reset button restores it. The value is validated and remembered locally when browser storage is available. Setup thumbnails keep their original scene exposure.
