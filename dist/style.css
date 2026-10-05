@@ -66,3 +66,20 @@
 
 #precisionDescription{font-size:11px;line-height:1.5;margin:-4px 0 12px;color:#cbd9d1}
 
+/* Stage completion owns focus and input until an explicit next/replay/free choice. */
+#missionCompletion{position:fixed;inset:0;width:min(1180px,calc(100vw - 40px));max-width:calc(100vw - 40px);max-height:calc(100dvh - 40px);margin:auto;padding:clamp(24px,5vw,64px);overflow:auto;border:1px solid #a7f9d3;border-radius:4px;background:radial-gradient(ellipse at 50% 0,#234e3eed,transparent 75%),#0d1e23f7;color:#f2f5e8;box-shadow:0 24px 100px #000a,0 0 75px #94f5cf14;text-align:center}
+#missionCompletion[hidden],#missionCompletion:not([open]){display:none}
+#missionCompletion::backdrop{background:#031016b8;backdrop-filter:blur(5px)}
+.mission-completion-content{width:100%;margin:auto}
+.mission-completion-mark{display:block;font-size:clamp(34px,5vw,72px);line-height:1;color:#a8ffd7;margin-bottom:22px;text-shadow:0 0 28px #94f5cf5c}
+#missionCongratulations{font-size:clamp(24px,6.4vw,100px);font-weight:bold;line-height:1.04;letter-spacing:-.065em;margin:0;color:#baffdf;text-shadow:0 3px 0 #071c14,0 0 48px #94f5cf20}
+#missionCompletionSubtitle{font-size:clamp(19px,2.8vw,32px);font-weight:bold;line-height:1.35;letter-spacing:.04em;margin:24px 0 10px;overflow-wrap:anywhere}
+#missionCompletionStage{font-size:clamp(12px,1.6vw,17px);line-height:1.5;letter-spacing:.09em;color:#c6d9cd;margin:0}
+.mission-completion-actions{display:flex;justify-content:center;flex-wrap:wrap;gap:12px;margin-top:36px}
+.mission-completion-actions button{min-height:52px;min-width:160px;font-size:14px;padding:14px 22px;white-space:normal;overflow-wrap:anywhere;border-color:#baffdf70}
+#nextMissionStage{background:#baffdf;color:#11291e;border-color:#baffdf}
+#nextMissionStage:hover{background:#ddffed}
+#nextMissionStage[hidden]{display:none}
+.precision-complete #dispatchPanel,.precision-complete #message,.precision-complete #warning{visibility:hidden}
+@media(max-width:600px){#missionCompletion{width:calc(100vw - 24px);max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:28px 16px}#missionCongratulations{font-size:clamp(22px,6.4vw,38px)}.mission-completion-mark{margin-bottom:18px}#missionCompletionSubtitle{margin-top:20px}.mission-completion-actions{margin-top:26px;gap:9px}.mission-completion-actions button{width:100%;min-width:0}}
+@media(max-height:520px){#missionCompletion{max-height:calc(100dvh - 16px);padding:20px}.mission-completion-mark{font-size:30px;margin-bottom:12px}#missionCongratulations{font-size:clamp(22px,5.8vw,64px)}#missionCompletionSubtitle{margin-top:14px;font-size:20px}.mission-completion-actions{margin-top:18px}.mission-completion-actions button{min-height:44px;padding:10px 16px}}

@@ -45,7 +45,7 @@ for(const {id:aircraft} of VEHICLES)for(const fps of [30,60,120]){
  assert.equal(mission.done,true,`${context}: all dispatches completed before test timeout`);
  assert.deepEqual(events,PRECISION_OBJECTIVES.map((_,index)=>index+1),`${context}: every objective advances once in order`);
  assert.equal(state.aircraft,aircraft,`${context}: selected aircraft retained`);
- assert.equal(state.paused,false,`${context}: completion preserves free flight`);
+ assert.equal(state.paused,true,`${context}: completion pauses for explicit next action`);
  const before=[state.x,state.y,state.z];mission.update(state,dt);
  assert.deepEqual([state.x,state.y,state.z],before,`${context}: completion does not teleport`);
  results.push({aircraft,fps,seconds:Number((frames/fps).toFixed(2))});

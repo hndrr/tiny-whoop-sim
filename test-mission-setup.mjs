@@ -6,7 +6,7 @@ import {setupFlightSelection} from './dist/selection-integration.mjs';
 import {loadSelection,saveSelection} from './dist/flight-selector.mjs';
 import {FlightState,GATES} from './dist/flight.mjs';
 import {setupPrecision} from './dist/precision-ui.mjs';
-import {PRECISION_OBJECTIVES} from './dist/precision-missions.mjs';
+import {PRECISION_OBJECTIVES,MISSION_STAGES} from './dist/precision-missions.mjs';
 import {VEHICLES,createVehicle,disposeVehicle,getVehicle} from './dist/vehicle-catalog.mjs';
 import {REGIONS} from './dist/world.mjs';
 import {i18n} from './dist/i18n.mjs';
@@ -187,7 +187,7 @@ try {
  function counts(){return {starts,leaves,resets,relocations,meshChanges,writes}}
  function assertClosed(){assert.equal(selector.isOpen,false);assert.equal(renderer.target,null);assert.equal(renderer.allocated,renderer.disposed);assert.equal(frames.size,0);assert.equal(canvas.captured.size,0)}
 
- assert.equal(document.querySelectorAll('dialog').length,1,'free and mission modes share exactly one dialog');
+ assert.equal(document.querySelectorAll('.flight-selector').length,1,'free and mission modes share exactly one setup dialog');assert.equal(document.querySelectorAll('dialog').length,2,'completion celebration is separate from setup');
  assert.equal(dialog.id,'flightSelector');assert.equal(dialog.getAttribute('aria-labelledby'),'selectorTitle');
  assert.equal(document.getElementById('missionSetup'),null);assert.equal(aircraft.children.length,VEHICLES.length);assert.equal(stages.children.length,REGIONS.length);
  assert.equal(form.querySelectorAll('[type="submit"]').length,1,'one explicit Start commits all setup choices');
@@ -212,7 +212,7 @@ try {
  }
  console.log('PASS: all six mode/area/aircraft edit orders in both modes remain pending, cancel cleanly, start once, retain the preview and never move focus');
 
- // Mission stage controls have neither pointer handlers nor keyboard tab stops.
+ // Mission area controls have neither pointer handlers nor keyboard tab stops.
  // Switching modes restores every pending free area without touching the flight.
  for(const region of REGIONS){
   seed({paused:false,active:false});const before=liveSnapshot(),saved=currentPersistence(),beforeCounts=counts();
@@ -232,7 +232,7 @@ try {
   cancel.click();await flushFrames();assert.equal(liveSnapshot(),before);assert.equal(currentPersistence(),saved);
   controller.leavePrecision();assertPending('free',controller.selection.selected.vehicle,controller.selection.selected.region);cancel.click();await flushFrames();
  }
- console.log('PASS: mission stages have no click handlers or tab stops; only fixed airfield is visible; every free-area choice survives repeated mode switches and Cancel/reopen');
+ console.log('PASS: mission areas have no click handlers or tab stops; only fixed airfield is visible; every free-area choice survives repeated mode switches and Cancel/reopen');
 
  // Open through the real precision UI buttons and main callbacks. Neither mode
  // button may mutate mission progress until the shared form is submitted.
@@ -321,6 +321,27 @@ try {
  renderer.fail=true;controller.startPrecision();vehicleButton('micro65').click();await flushFrames();assert.equal(dialog.querySelector('.preview-status').hidden,false);const beforeFailureStarts=starts;form.requestSubmit();await flushFrames();assert.equal(starts,beforeFailureStarts+1);assert.equal(state.paused,false);assert.equal(state.aircraft,'micro65');assertClosed();
  renderer.fail=false;controller.startPrecision();await flushFrames();assert.equal(dialog.querySelector('.preview-status').hidden,true);cancel.click();await flushFrames();assertClosed();assert.ok(canvas.context.draws>0);assert.ok(canvas.context.clears>0);assert.ok(hudUpdates>0);
  console.log('PASS: shared preview fallback/recovery keeps both modes usable and disposes GPU targets without a permanent render loop');
+ // Stage choices use the same pending transaction as mode and aircraft.
+ const missionChoices=dialog.querySelector('.mission-stage-grid');assert.equal(missionChoices.children.length,3);
+ for(const stageIndex of [1,2,0]){
+  controller.startPrecision();const before=liveSnapshot(),saved=currentPersistence();missionChoices.children[stageIndex].click();vehicleButton('cine95').click();
+  for(const language of ['ja','en']){i18n.setLanguage(language);assert.equal(missionChoices.children[stageIndex].getAttribute('aria-pressed'),'true');assert.equal(missionChoices.children[stageIndex].querySelector('strong').textContent,i18n.t(MISSION_STAGES[stageIndex].title))}
+  cancel.click();await flushFrames();assert.equal(unpausedSnapshot(),JSON.stringify({...JSON.parse(before),state:{...JSON.parse(before).state,paused:false}}));assert.equal(currentPersistence(),saved);
+  controller.startPrecision();missionChoices.children[stageIndex].click();vehicleButton('cine95').click();form.requestSubmit();await flushFrames();
+  assert.equal(controller.mission.stageIndex,stageIndex);assert.equal(controller.mission.index,0);assert.equal(state.aircraft,'cine95');assert.equal(state.region,0);assert.equal(state.paused,false);
+  assert.deepEqual([state.x,state.y,state.z],[...MISSION_STAGES[stageIndex].objectives[0].checkpoint]);
+ }
+ function completeStage(){
+  while(!controller.mission.done){const target=controller.mission.objective.target;[state.x,state.y,state.z]=target;state.vx=state.vy=state.vz=0;state.paused=false;for(let frame=0;frame<16;frame++)controller.mission.update(state,.05)}
+  controller.precision.render(true);assert.equal(state.paused,true);assert.equal($('missionCompletion').open,true);assert.equal(keys.size,0);assert.deepEqual(axes,{pitch:0,roll:0,throttle:0,yaw:0});
+ }
+ completeStage();const completePosition=[state.x,state.y,state.z];controller.toggle();assert.equal(state.paused,true);assert.deepEqual([state.x,state.y,state.z],completePosition);
+ $('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,1);assert.equal(controller.mission.done,false);assert.equal(state.paused,false);assert.equal(state.aircraft,'cine95');
+ completeStage();$('replayMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,1);assert.equal(controller.mission.index,0);assert.equal(state.paused,false);
+ completeStage();$('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,2);assert.equal(state.paused,false);
+ completeStage();assert.equal($('nextMissionStage').hidden,true);assert.equal($('missionCompletionSubtitle').textContent,i18n.t('allStagesComplete',{stage:3,title:i18n.t(MISSION_STAGES[2].title)}));
+ const finalPosition=[state.x,state.y,state.z];$('leaveMissionCompletion').click();await flushFrames();assert.equal(controller.mission.active,false);assert.equal(state.paused,false);assert.equal(state.practiceEnabled,true);assert.deepEqual([state.x,state.y,state.z],finalPosition);assert.equal($('missionCompletion').open,false);
+ console.log('PASS: stage choices cancel atomically, EN/JA pending stage survives, explicit Next/Replay/final Free Flight launch safely with selected aircraft and no completion teleport');
  console.log('Unified flight setup checks passed (actual Node DOM/controller contracts; browser/mobile layout QA remains separate)');
 } finally {
  i18n.setLanguage(originalLanguage);

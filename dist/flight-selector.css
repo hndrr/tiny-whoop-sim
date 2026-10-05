@@ -11,3 +11,5 @@
 /* A mission has one fixed area; only free flight exposes stage choices. */
 .flight-selector .stage-card[hidden]{display:none}
 .flight-selector .stage-card:disabled,.flight-selector .stage-card:disabled:hover{cursor:default;color:#ecf3e9;border-color:#789c90;background:#1a3036;box-shadow:none}
+
+.mission-stage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.mission-stage-option{padding:16px;text-align:left;display:flex;flex-direction:column;gap:9px;border:1px solid #496264;background:#132c30;color:#dce9e6;border-radius:10px}.mission-stage-option strong{font-size:14px}.mission-stage-option span{font-size:12px;line-height:1.6;opacity:.8}.mission-stage-option[aria-pressed="true"]{border-color:#a6f9d4;background:#244d48;box-shadow:inset 0 0 0 1px #a6f9d4}@media(max-width:700px){.mission-stage-grid{grid-template-columns:1fr}}

@@ -197,7 +197,7 @@ try {
   await flushFrames();assert.equal(dialog.querySelector('.preview-status').hidden,true);
   const submission=form.requestSubmit();assert.equal(submission.defaultPrevented,true,'selector owns the submit commit');
   await flushFrames();assert.equal(selector.isOpen,false);
-  assert.deepEqual(applies.at(-1),{next:{vehicle:id,region:'airfield'},changes:{areaChanged:false,vehicleChanged:id!==before.vehicle,mode:'free'}});
+  assert.deepEqual(applies.at(-1),{next:{vehicle:id,region:'airfield'},changes:{areaChanged:false,vehicleChanged:id!==before.vehicle,mode:'free',stageIndex:0}});
   assertLive({vehicle:id,region:'airfield'},beforeApplies+1,beforeWrites+1);
   assert.deepEqual(loadSelection(),selected,'submit persists the applied aircraft');
   assert.deepEqual([state.x,state.y,state.z,state.elapsed,state.gate],baselinePosition,'aircraft-only apply preserves flight progress');
@@ -214,10 +214,10 @@ try {
  console.log('PASS: all five aircraft apply via real form submit, persist, restore on reopen, and discard Cancel/Escape edits with no live-profile mutation');
 
  selector.open();vehicleButton('racer90').click();regionButton('harbor').click();form.requestSubmit();await flushFrames();
- assert.deepEqual(applies.at(-1),{next:{vehicle:'racer90',region:'harbor'},changes:{areaChanged:true,vehicleChanged:true,mode:'free'}});
+ assert.deepEqual(applies.at(-1),{next:{vehicle:'racer90',region:'harbor'},changes:{areaChanged:true,vehicleChanged:true,mode:'free',stageIndex:0}});
  assert.equal(state.region,REGIONS.findIndex(region=>region.id==='harbor'));assert.deepEqual(loadSelection(),selected);
  selector.open();assertPending('racer90','harbor');form.requestSubmit();await flushFrames();
- assert.deepEqual(applies.at(-1).changes,{areaChanged:false,vehicleChanged:false,mode:'free'},'unchanged apply compares with latest committed selection');
+ assert.deepEqual(applies.at(-1).changes,{areaChanged:false,vehicleChanged:false,mode:'free',stageIndex:0},'unchanged apply compares with latest committed selection');
 
  const applied={...selected},appliedCount=applies.length,writeCount=writes;
  for(let repeat=0;repeat<12;repeat++){

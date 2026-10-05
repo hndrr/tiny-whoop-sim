@@ -32,7 +32,7 @@ mission.leave();const snapshot=JSON.stringify(state);mission.update(state,.05);a
 mission.start(state);state.paused=false;[state.x,state.y,state.z]=mission.objective.target;mission.hold=.79;state.crashed=true;mission.update(state,.05);assert.equal(mission.index,0);assert(!mission.done);
 mission.retry(state);assert.equal(mission.hold,0);assert(!state.crashed);
 // Integration invariant: whole frame collision handling precedes dispatch advancement.
-const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');assert(main.includes('s.crashed=true;s.updatePractice(before,Math.min(dt/2,.03),!precision.mission.active)}precision.mission.update(s,dt);drone.position'));
+const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');assert(main.includes('s.crashed=true;s.updatePractice(before,Math.min(dt/2,.03),!precision.mission.active)}if(precision.mission.update(s,dt)&&precision.mission.done){keys.clear();clearSticks()}drone.position'));
 assert(main.includes('onAreaChange:()=>{flightStarted=false}'));assert(main.includes('precision.mission.retry(s)'));
 console.log('PASS: four untimed dispatches, real geometry/clearance, forgiving hold, crash gating, per-objective retry, profile preservation, free-flight exit');
 // Every blocker is actionable and the evaluator exactly matches completion.
@@ -49,5 +49,5 @@ for(const objective of PRECISION_OBJECTIVES){
 assert(main.includes('g.group.visible=!precision?.mission.active'));
 assert(main.includes('precision.mission.retry(s);keys.clear();clearSticks()'));
 const launch=main.slice(main.indexOf('function startSelectedFlight'),main.indexOf('flightSelection=setupFlightSelection'));
-assert(launch.includes('precision.mission.start(s)'));assert(launch.includes('precision.mission.leave()'));assert(launch.includes('keys.clear();clearSticks()'));
+assert(launch.includes('precision.mission.start(s,stageIndex)'));assert(launch.includes('precision.mission.leave()'));assert(launch.includes('keys.clear();clearSticks()'));
 console.log('PASS: every live guidance blocker, inclusive boundaries, race-gate visibility and mission input cleanup wiring');
