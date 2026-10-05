@@ -1,4 +1,3 @@
-import {createMissionSetup} from './mission-setup.mjs';
 import {localizeFlight} from './localize-flight.mjs';
 import {i18n} from './i18n.mjs';
 import {setupPrecision} from './precision-ui.mjs';
@@ -79,11 +78,10 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden)suspendInpu
 addEventListener('resize',()=>sticks.render());
 
 precision=setupPrecision({scene,state:s,start:startPrecision,leave:leavePrecision,retry:reset});
-function startPrecision(){missionSetup.open()}
-function launchPrecision(vehicle){flightSelection.applyMissionSelection(vehicle);precision.mission.start(s);keys.clear();clearSticks();flightStarted=true;s.paused=false;help(false);updateHUD();$('pause').focus({preventScroll:true})}
-function leavePrecision(){precision.mission.leave();keys.clear();clearSticks();help(false);updateHUD()}
-flightSelection=setupFlightSelection({onAreaChange:()=>{flightStarted=false;precision.mission.leave()},renderer,scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,getDrone:()=>drone,state:s,clearInputs:()=>{keys.clear();clearSticks()},updateHUD,setVehicle,closeHelp:()=>help(false)});
-const missionSetup=createMissionSetup({state:s,getSelection:()=>flightSelection.selected,onLaunch:launchPrecision,clearInputs:()=>{keys.clear();clearSticks()},onCancel:()=>{updateHUD();$($('helpPanel').hidden?'pause':'precisionFlight').focus({preventScroll:true})}});
+function startPrecision(){flightSelection.selector.open('mission')}
+function leavePrecision(){flightSelection.selector.open('free')}
+function startSelectedFlight(mode){if(mode==='mission'){if(!precision.mission.active)precision.mission.start(s);else if(s.crashed)precision.mission.retry(s)}else {precision.mission.leave();if(s.crashed)flightSelection.reset()}flightStarted=true;keys.clear();clearSticks();help(false)}
+flightSelection=setupFlightSelection({getMode:()=>precision.mission.active?'mission':'free',onStart:startSelectedFlight,onAreaChange:()=>{flightStarted=false},renderer,scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,getDrone:()=>drone,state:s,clearInputs:()=>{keys.clear();clearSticks()},updateHUD,setVehicle,closeHelp:()=>help(false)});
 const osd=document.createElement('div');osd.id='osd';osd.innerHTML='<span>VTX SIM</span><span>ANALOG / 576</span>';document.body.append(osd);
 function updateHUD(){
 document.body.classList.toggle('flight-idle',s.paused||s.crashed);

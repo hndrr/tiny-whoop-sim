@@ -33,7 +33,7 @@ mission.start(state);state.paused=false;[state.x,state.y,state.z]=mission.object
 mission.retry(state);assert.equal(mission.hold,0);assert(!state.crashed);
 // Integration invariant: whole frame collision handling precedes dispatch advancement.
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');assert(main.includes('s.crashed=true}precision.mission.update(s,dt);drone.position'));
-assert(main.includes('onAreaChange:()=>{flightStarted=false;precision.mission.leave()}'));assert(main.includes('precision.mission.retry(s)'));
+assert(main.includes('onAreaChange:()=>{flightStarted=false}'));assert(main.includes('precision.mission.retry(s)'));
 console.log('PASS: four untimed dispatches, real geometry/clearance, forgiving hold, crash gating, per-objective retry, profile preservation, free-flight exit');
 // Every blocker is actionable and the evaluator exactly matches completion.
 const {objectiveFeedback}=await import('./dist/precision-missions.mjs');
@@ -48,6 +48,6 @@ for(const objective of PRECISION_OBJECTIVES){
 }
 assert(main.includes('g.group.visible=!precision?.mission.active'));
 assert(main.includes('precision.mission.retry(s);keys.clear();clearSticks()'));
-assert(main.includes('precision.mission.start(s);keys.clear();clearSticks()'));
-assert(main.includes('precision.mission.leave();keys.clear();clearSticks()'));
+const launch=main.slice(main.indexOf('function startSelectedFlight'),main.indexOf('flightSelection=setupFlightSelection'));
+assert(launch.includes('precision.mission.start(s)'));assert(launch.includes('precision.mission.leave()'));assert(launch.includes('keys.clear();clearSticks()'));
 console.log('PASS: every live guidance blocker, inclusive boundaries, race-gate visibility and mission input cleanup wiring');

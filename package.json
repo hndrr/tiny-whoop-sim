@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node serve.mjs",
     "test": "node test-flight.mjs && node test-controls.mjs && node test-selection.mjs && node test-brightness.mjs && node test-profiles.mjs && node test-descent.mjs && node test-selector-lifecycle.mjs && node test-airframes.mjs && node test-precision.mjs && node test-i18n.mjs && node test-precision-flight.mjs && node test-precision-ui.mjs && node test-mission-setup.mjs",
-    "check": "node --check dist/main.mjs && node --check dist/flight.mjs && node --check dist/controls.mjs && node --check dist/vehicle-catalog.mjs && node --check dist/flight-selector.mjs && node --check dist/selection-integration.mjs && node --check dist/brightness.mjs && node --check dist/flight-profiles.mjs && node --check dist/vertical-flight.mjs && node --check dist/stage.mjs && node --check dist/precision-missions.mjs && node --check dist/precision-ui.mjs && node --check dist/i18n.mjs && node --check dist/localize-flight.mjs && node --check dist/mission-setup.mjs",
+    "check": "node --check dist/main.mjs && node --check dist/flight.mjs && node --check dist/controls.mjs && node --check dist/vehicle-catalog.mjs && node --check dist/flight-selector.mjs && node --check dist/selection-integration.mjs && node --check dist/brightness.mjs && node --check dist/flight-profiles.mjs && node --check dist/vertical-flight.mjs && node --check dist/stage.mjs && node --check dist/precision-missions.mjs && node --check dist/precision-ui.mjs && node --check dist/i18n.mjs && node --check dist/localize-flight.mjs",
     "build": "npm run check"
   },
   "engines": {

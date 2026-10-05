@@ -7,3 +7,5 @@
 .preview-status{font:12px/1.5 Arial,sans-serif;color:#ecd49c;padding:0 16px}.preview-status[hidden]{display:none}
 
 .vehicle-option .vehicle-trait{color:#e1eadc}.vehicle-option .vehicle-metrics{font:10px/1.6 monospace;color:#a8dec9}.aircraft-inspector{align-self:start}
+
+.selector-mode [role="group"]{display:flex;gap:8px}.selector-mode button{min-height:44px;padding:10px 18px}.selector-mode [aria-pressed="true"]{border-color:#94f5cf;color:#94f5cf}#selectorMissionBrief{line-height:1.5;padding:12px 0}#selectorMissionBrief h3{font-size:16px}#selectorMissionBrief p{margin:8px 0}#selectorStages[hidden],#selectorMissionBrief[hidden]{display:none}
