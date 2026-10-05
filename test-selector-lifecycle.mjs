@@ -99,12 +99,12 @@ class Document extends Events {
 
 const ids=['whoop75','micro65','scout85','racer90','cine95'];
 assert.deepEqual(VEHICLES.map(vehicle=>vehicle.id),ids,'every aircraft has an actual selector option');
-const globalNames=['document','localStorage','addEventListener','requestAnimationFrame','cancelAnimationFrame'];
+const globalNames=['document','localStorage','addEventListener','requestAnimationFrame','cancelAnimationFrame','matchMedia'];
 const originalGlobals=new Map(globalNames.map(name=>[name,Object.getOwnPropertyDescriptor(globalThis,name)]));
 const document=new Document(),windowEvents=new Events(),frames=new Map(),stored=new Map();
-let frameId=0,writes=0;
+let frameId=0,writes=0;const motionPreference=new Events();motionPreference.matches=true;
 Object.assign(globalThis,{
- document,addEventListener:windowEvents.addEventListener.bind(windowEvents),
+ document,matchMedia:()=>motionPreference,addEventListener:windowEvents.addEventListener.bind(windowEvents),
  localStorage:{getItem:key=>stored.get(key)??null,setItem(key,value){writes++;stored.set(key,String(value))}},
  requestAnimationFrame:callback=>{frames.set(++frameId,callback);return frameId},
  cancelAnimationFrame:id=>frames.delete(id),
@@ -123,10 +123,10 @@ try {
  const state=new FlightState();Object.assign(state,{x:12,y:17,z:30,elapsed:9,gate:2});
  let selected={vehicle:'whoop75',region:'airfield'},openCalls=0,closeCalls=0,applies=[];
  const baselinePosition=[state.x,state.y,state.z,state.elapsed,state.gate];
- const captures=[],renderer={target:null,fail:true,allocated:0,disposed:0,
+ const targets=new Set(),captures=[],renderer={target:null,fail:true,allocated:0,disposed:0,
   getRenderTarget(){return this.target},
-  setRenderTarget(target){this.target=target;if(target){this.allocated++;target.addEventListener('dispose',()=>this.disposed++)}},
-  render(){if(this.fail)throw Error('simulated preview renderer unavailable')},
+  setRenderTarget(target){this.target=target;if(target&&!targets.has(target)){targets.add(target);this.allocated++;target.addEventListener('dispose',()=>this.disposed++)}},
+  render(scene,camera){this.scene=scene;this.camera=camera;if(this.fail)throw Error('simulated preview renderer unavailable')},
   readRenderTargetPixels(_target,_x,_y,_w,_h,pixels){pixels.fill(0)},
  };
  const selector=createFlightSelector({renderer,
@@ -239,6 +239,33 @@ try {
  assert.ok(canvas.context.draws>0,'successful render callback copied a preview to the inspector');
  assert.ok(canvas.context.clears>0,'failed preview callback exercised fallback');
  console.log('PASS: area commits, unchanged apply, repeated/rapid open-close, drag cleanup, preview fallback/recovery and render-target disposal');
+ // Animated mode uses the same actual models and callbacks with a deterministic RAF clock.
+ motionPreference.matches=false;
+ let now=1000;
+ async function tick(ms=40){now+=ms;await Promise.resolve();const batch=[...frames.values()];frames.clear();for(const callback of batch)callback(now);await Promise.resolve()}
+ const position=()=>renderer.camera.position.toArray();
+ for(const id of ids){
+  selector.open();vehicleButton(id).click();await tick();
+  const group=renderer.scene.children.find(child=>child.name===id),props=group.children.filter(child=>child.type==='Group');
+  assert.equal(props.length,4);const angle=props[0].rotation.z,start=position(),allocated=renderer.allocated;
+  await tick();assert.notEqual(props[0].rotation.z,angle);assert.notDeepEqual(position(),start);
+  assert.equal(renderer.allocated,allocated,'frames reuse one target');
+  const backdrop=renderer.scene.children.find(child=>child.name==='inspector-backdrop');assert.equal(backdrop.children.length,2,'real gradient and contact shadow are rendered');
+  canvas.fire('pointerdown',{cancelable:true,pointerId:100,clientX:20,clientY:20});
+  const held=position();await tick();assert.deepEqual(position(),held,'drag pauses turntable');
+  canvas.fire('pointermove',{pointerId:100,clientX:45,clientY:35});await tick();assert.notDeepEqual(position(),held);
+  canvas.fire('pointerup',{pointerId:100});const released=position();for(let i=0;i<25;i++)await tick();assert.deepEqual(position(),released,'release grace preserves manual view');
+  for(let i=0;i<10;i++)await tick();assert.notDeepEqual(position(),released,'turntable resumes from manual view');
+  document.hidden=true;document.fire('visibilitychange');assert.equal(frames.size,0,'hidden tab cancels animated RAF');const hiddenAngle=props[0].rotation.z;
+  now+=100000;document.hidden=false;document.fire('visibilitychange');await tick();assert.equal(props[0].rotation.z,hiddenAngle,'resume discards hidden time');
+  const oldModel=group;vehicleButton(ids[(ids.indexOf(id)+1)%ids.length]).click();await tick();assert.ok(!renderer.scene.children.includes(oldModel));
+  selector.close();await Promise.resolve();assert.equal(frames.size,0);assert.equal(renderer.allocated,renderer.disposed,'close releases reusable target');
+  assertLive(applied,appliedCount,writeCount);
+ }
+ selector.open();await tick();motionPreference.matches=true;motionPreference.fire('change');await tick();assert.equal(frames.size,0,'reduced motion renders once without automatic movement');
+ const reducedView=position();canvas.fire('keydown',{code:'ArrowRight',cancelable:true});await tick();assert.notDeepEqual(position(),reducedView,'reduced motion retains manual inspection');assert.equal(frames.size,0);
+ selector.close();await Promise.resolve();assert.equal(renderer.allocated,renderer.disposed);
+ console.log('PASS: all five real previews animate, pause for drag, resume without snapping, reuse targets, stop while hidden/closed, respect reduced motion and never mutate live flight');
  console.log('Selector lifecycle checks passed (Node DOM contract harness; browser/WebGL interaction QA remains separate)');
 } finally {
  for(const [name,descriptor] of originalGlobals){if(descriptor)Object.defineProperty(globalThis,name,descriptor);else delete globalThis[name]}

@@ -93,7 +93,7 @@ const originalGlobals=new Map(globalNames.map(name=>[name,Object.getOwnPropertyD
 const originalLanguage=i18n.language;
 const document=new Document(),windowEvents=new Events(),stored=new Map(),frames=new Map();document.parentNode=windowEvents;
 let coarse=false,writes=0,frameId=0;
-Object.assign(globalThis,{document,matchMedia:()=>({matches:coarse}),addEventListener:windowEvents.addEventListener.bind(windowEvents),localStorage:{getItem:key=>stored.get(key)??null,setItem(key,value){writes++;stored.set(key,String(value))}},requestAnimationFrame:callback=>{frames.set(++frameId,callback);return frameId},cancelAnimationFrame:id=>frames.delete(id)});
+Object.assign(globalThis,{document,matchMedia:query=>({matches:query.includes('prefers-reduced-motion')||coarse}),addEventListener:windowEvents.addEventListener.bind(windowEvents),localStorage:{getItem:key=>stored.get(key)??null,setItem(key,value){writes++;stored.set(key,String(value))}},requestAnimationFrame:callback=>{frames.set(++frameId,callback);return frameId},cancelAnimationFrame:id=>frames.delete(id)});
 async function flushFrames(){
  for(let turn=0;turn<40;turn++){
   await Promise.resolve();if(!frames.size){await Promise.resolve();if(!frames.size)return}
