@@ -176,7 +176,13 @@ try {
   assert.equal($('selectorStages').hidden,false);assert.equal($('selectorAreaHint').textContent,i18n.t(mode==='mission'?'missionAreaHint':'freeAreaHint'));
   assert.deepEqual(aircraft.children.filter(button=>button.getAttribute('aria-pressed')==='true').map(button=>button.dataset.vehicle),[vehicle]);
   assert.match(canvas.getAttribute('aria-label'),new RegExp(getVehicle(vehicle).name));
-  if(region)assert.deepEqual(stages.children.filter(button=>button.getAttribute('aria-pressed')==='true').map(button=>button.dataset.region),[region]);
+  if(mode==='mission'||region)assert.deepEqual(stages.children.filter(button=>button.getAttribute('aria-pressed')==='true').map(button=>button.dataset.region),[mode==='mission'?'airfield':region]);
+  for(const button of stages.children){
+   assert.equal(button.disabled,mode==='mission');assert.equal(button.tabIndex,mode==='mission'?-1:0);
+   assert.equal(button.hidden,mode==='mission'&&button.dataset.region!=='airfield');
+   assert.equal(typeof button.onclick,mode==='mission'?'object':'function');
+  }
+  if(mode==='mission')assert.equal(regionButton('airfield').querySelector('strong').textContent,i18n.t('missionFixedArea'));
  }
  function counts(){return {starts,leaves,resets,relocations,meshChanges,writes}}
  function assertClosed(){assert.equal(selector.isOpen,false);assert.equal(renderer.target,null);assert.equal(renderer.allocated,renderer.disposed);assert.equal(frames.size,0);assert.equal(canvas.captured.size,0)}
@@ -201,10 +207,32 @@ try {
   $('chooseFlight').click();const focused=document.activeElement;
   const edit={mode:()=>$(mode==='mission'?'selectorMission':'selectorFree').click(),area:()=>regionButton('offshore').click(),aircraft:()=>vehicleButton('racer90').click()};
   for(const key of order){edit[key]();assert.equal(document.activeElement,focused,'choice handlers never steal focus');assert.equal($('selectorStages').hidden,false,'areas stay in the same view');assert.equal(canvas.closest('[hidden]'),null,'preview stays in the same view')}
-  assertPending(mode,'racer90','offshore');cancel.click();await flushFrames();assert.equal(liveSnapshot(),before);assert.equal(currentPersistence(),saved);
+  assertPending(mode,'racer90',mode==='free'?'offshore':undefined);cancel.click();await flushFrames();assert.equal(liveSnapshot(),before);assert.equal(currentPersistence(),saved);
   $('chooseFlight').click();for(const key of order)edit[key]();form.requestSubmit();await flushFrames();assertClosed();assert.equal(state.paused,false);assert.deepEqual(controller.selection.selected,{vehicle:'racer90',region:mode==='mission'?'airfield':'offshore'});assert.equal(controller.mission.active,mode==='mission');
  }
  console.log('PASS: all six mode/area/aircraft edit orders in both modes remain pending, cancel cleanly, start once, retain the preview and never move focus');
+
+ // Mission stage controls have neither pointer handlers nor keyboard tab stops.
+ // Switching modes restores every pending free area without touching the flight.
+ for(const region of REGIONS){
+  seed({paused:false,active:false});const before=liveSnapshot(),saved=currentPersistence(),beforeCounts=counts();
+  controller.leavePrecision();regionButton(region.id).click();assertPending('free',controller.selection.selected.vehicle,region.id);
+  for(let repeat=0;repeat<3;repeat++){
+   $('selectorMission').click();assertPending('mission',controller.selection.selected.vehicle);
+   for(const button of stages.children){
+    assert.equal(button.onclick,null);button.click();button.fire('click',{bubbles:true});
+    for(const code of ['Enter','Space'])button.fire('keydown',{code,bubbles:true,cancelable:true});
+   }
+   assertPending('mission',controller.selection.selected.vehicle);
+   assert.match(dialog.querySelector('.selection-summary').textContent,new RegExp(i18n.t('missionFixedArea').replace(/[.*+?^${}()|[\]\\]/g,'\\$&')));
+   $('selectorFree').click();assertPending('free',controller.selection.selected.vehicle,region.id);
+   assert.equal(regionButton('airfield').querySelector('strong').textContent,i18n.t('region.airfield'));
+   assert.deepEqual(counts(),beforeCounts);assert.equal(currentPersistence(),saved);
+  }
+  cancel.click();await flushFrames();assert.equal(liveSnapshot(),before);assert.equal(currentPersistence(),saved);
+  controller.leavePrecision();assertPending('free',controller.selection.selected.vehicle,controller.selection.selected.region);cancel.click();await flushFrames();
+ }
+ console.log('PASS: mission stages have no click handlers or tab stops; only fixed airfield is visible; every free-area choice survives repeated mode switches and Cancel/reopen');
 
  // Open through the real precision UI buttons and main callbacks. Neither mode
  // button may mutate mission progress until the shared form is submitted.

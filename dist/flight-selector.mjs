@@ -60,7 +60,7 @@ export function createFlightSelector({renderer,captureStage,getSelection,getMode
   const button=document.createElement('button');button.type='button';button.className='stage-card';button.dataset.region=region.id;button.setAttribute('aria-pressed','false');
   const image=document.createElement('img');image.alt=i18n.t('sceneAlt',{name:i18n.t(`region.${region.id}`)});image.width=360;image.height=200;image.hidden=true;
   const loading=document.createElement('span');loading.className='stage-loading';loading.dataset.i18n='renderingScene';loading.textContent=i18n.t('renderingScene');
-  const text=document.createElement('span');text.className='stage-card-copy';const title=document.createElement('strong');title.dataset.i18n=`region.${region.id}`;title.textContent=i18n.t(`region.${region.id}`);const note=document.createElement('small');note.dataset.i18n=`stageNote.${region.id}`;note.textContent=i18n.t(`stageNote.${region.id}`);text.append(title,note);button.append(image,loading,text);button.onclick=()=>{pending.region=region.id;sync()};stages.append(button);
+  const text=document.createElement('span');text.className='stage-card-copy';const title=document.createElement('strong');title.dataset.i18n=`region.${region.id}`;title.textContent=i18n.t(`region.${region.id}`);const note=document.createElement('small');note.dataset.i18n=`stageNote.${region.id}`;note.textContent=i18n.t(`stageNote.${region.id}`);text.append(title,note);button.append(image,loading,text);stages.append(button);
  }
  for(const vehicle of VEHICLES){const button=document.createElement('button');button.type='button';button.className='vehicle-option';button.dataset.vehicle=vehicle.id;button.setAttribute('aria-pressed','false');button.innerHTML=`<span class="vehicle-swatch"></span><span><strong>${vehicle.name}</strong><small data-i18n="vehicle.${vehicle.id}.tag">${i18n.t(`vehicle.${vehicle.id}.tag`)}</small><span data-i18n="vehicle.${vehicle.id}.description">${i18n.t(`vehicle.${vehicle.id}.description`)}</span><span class="vehicle-trait" data-i18n="vehicle.${vehicle.id}.trait">${i18n.t(`vehicle.${vehicle.id}.trait`)}</span><span class="vehicle-metrics">${metrics(vehicle.id)}</span></span>`;button.style.setProperty('--vehicle-color',vehicle.color);button.onclick=()=>{pending.vehicle=vehicle.id;setModel();sync()};options.append(button)}
  function metrics(id){const p=getFlightProfile(id);return i18n.t('profileMetrics',{acceleration:Math.round(p.acceleration*100),response:Math.round(p.response*100),topSpeed:Math.round(p.topSpeed*100)})}
@@ -72,7 +72,21 @@ export function createFlightSelector({renderer,captureStage,getSelection,getMode
   if(!$('.preview-status').hidden)$('.preview-status').textContent=i18n.t('aircraftPreviewUnavailable');
   sync();
  }
- function sync(){$('#selectorFree').setAttribute('aria-pressed',String(pendingMode==='free'));$('#selectorMission').setAttribute('aria-pressed',String(pendingMode==='mission'));$('#selectorAreaHint').textContent=i18n.t(pendingMode==='mission'?'missionAreaHint':'freeAreaHint');for(const b of stages.children)b.setAttribute('aria-pressed',String(b.dataset.region===pending.region));for(const b of options.children)b.setAttribute('aria-pressed',String(b.dataset.vehicle===pending.vehicle));$('.selection-summary').textContent=`${i18n.t(pendingMode==='mission'?'modePrecision':'modeFree')} / ${getVehicle(pending.vehicle).name} / ${i18n.t(`region.${pendingMode==='mission'?'airfield':pending.region}`)}`;}
+ function sync(){
+  const mission=pendingMode==='mission',effectiveRegion=mission?'airfield':pending.region;
+  $('#selectorFree').setAttribute('aria-pressed',String(!mission));$('#selectorMission').setAttribute('aria-pressed',String(mission));
+  $('#selectorAreaHint').textContent=i18n.t(mission?'missionAreaHint':'freeAreaHint');
+  for(const button of stages.children){
+   const region=button.dataset.region,fixed=mission&&region==='airfield';
+   // Keep the free-flight choice pending, but expose only the actual mission area.
+   button.hidden=mission&&!fixed;button.disabled=mission;button.tabIndex=mission?-1:0;
+   button.onclick=mission?null:()=>{pending.region=region;sync()};
+   button.setAttribute('aria-pressed',String(region===effectiveRegion));
+   const title=button.querySelector('strong');title.dataset.i18n=fixed?'missionFixedArea':`region.${region}`;title.textContent=i18n.t(title.dataset.i18n);
+  }
+  for(const button of options.children)button.setAttribute('aria-pressed',String(button.dataset.vehicle===pending.vehicle));
+  $('.selection-summary').textContent=`${i18n.t(mission?'modePrecision':'modeFree')} / ${getVehicle(pending.vehicle).name} / ${i18n.t(mission?'missionFixedArea':`region.${effectiveRegion}`)}`;
+ }
  $('#selectorFree').onclick=()=>{pendingMode='free';sync()};$('#selectorMission').onclick=()=>{pendingMode='mission';sync()};
  function renderVehicle(now){
   scheduled=0;if(!dialog.open||document.hidden||!model)return;

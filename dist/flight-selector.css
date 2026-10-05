@@ -7,3 +7,7 @@
 @media(max-height:520px){.flight-selector{height:calc(100dvh - 16px);max-height:calc(100dvh - 16px)}.flight-selector .selector-heading{padding-top:8px;padding-bottom:8px}.flight-selector .selector-footer{padding-top:8px;padding-bottom:8px}}
 @media(prefers-reduced-motion:reduce){.flight-selector *{scroll-behavior:auto}}
 .flight-selector #languageSelect{width:104px;min-height:44px;flex:none;margin:0;padding:4px;font:11px monospace}.flight-selector .selector-heading>div{min-width:0}.flight-selector h2{font-size:18px;overflow-wrap:anywhere}.selector-help{border-top:1px solid #36504c;margin-top:10px;padding-top:4px}.selector-help .controlRow{font-size:11px;margin:8px 0}.selector-help .tip{font:11px/1.5 Arial,sans-serif;margin:10px 0}
+
+/* A mission has one fixed area; only free flight exposes stage choices. */
+.flight-selector .stage-card[hidden]{display:none}
+.flight-selector .stage-card:disabled,.flight-selector .stage-card:disabled:hover{cursor:default;color:#ecf3e9;border-color:#789c90;background:#1a3036;box-shadow:none}
