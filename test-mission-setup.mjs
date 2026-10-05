@@ -107,8 +107,27 @@ function sourceBetween(start,end){const from=main.indexOf(start),to=main.indexOf
 try {
  i18n.setLanguage('en');
  const css=readFileSync(new URL('./dist/flight-selector.css',import.meta.url),'utf8');
- assert.match(css,/inset:auto var\(--edge\) 83px auto/,'original right/bottom settings anchor');assert.match(css,/width:min\(350px,calc\(100vw - 36px\)\)/,'original compact settings width');assert.match(css,/height:min\(640px,calc\(100dvh - 130px\)\)/,'bounded, mode-independent settings height');
- assert.match(css,/object-fit:contain/,'preview preserves its render-buffer aspect ratio');assert.doesNotMatch(css,/1120px|selectorMissionBrief/,'no enlarged dialog or mission-specific layout');assert.match(css,/bottom:72px;height:calc\(100dvh - 92px\)/,'short screens preserve original bounded anchor');
+ assert.match(css,/position:fixed;inset:0;width:min\(1180px,calc\(100vw - 48px\)\)/,'large desktop settings surface');
+ assert.match(css,/height:90dvh;max-height:calc\(100dvh - 48px\);margin:auto/,'centered with a mode-independent viewport-bounded height');
+ assert.match(css,/grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/,'desktop area grid uses available width');
+ assert.match(css,/grid-template-columns:minmax\(0,1\.1fr\) minmax\(0,1fr\)/,'large preview beside aircraft choices');
+ assert.match(css,/height:auto;aspect-ratio:5 \/ 3;object-fit:contain/,'large preview preserves its render-buffer aspect ratio');
+ assert.match(css,/@media\(max-width:700px\)/,'narrow-screen layout is explicit');
+ assert.match(css,/width:calc\(100vw - 24px\);max-width:calc\(100vw - 24px\);height:calc\(100dvh - 24px\)/,'mobile viewport margins');
+ assert.match(css,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,'mobile choices remain a wrapping grid');
+ assert.match(css,/\.vehicle-options\{max-height:none;overflow:visible\}/,'mobile uses body scrolling instead of nested aircraft scroll');
+ assert.match(css,/min-height:0;overflow:auto;overflow-x:hidden;flex:1/,'body can shrink and scroll without pushing footer out');
+ assert.match(css,/background:#102227;flex:none/,'footer remains outside the shrinking body');
+ assert.match(css,/height:calc\(100dvh - 16px\);max-height:calc\(100dvh - 16px\)/,'short viewports retain safe margins');
+ assert.doesNotMatch(css,/selectorMissionBrief|inset:auto var\(--edge\)|width:min\(350px/,'no wizard or old compact side anchor');
+ // These check CSS sizing contracts, not browser rendering or WebGL pixels.
+ for(const [width,height] of [[1440,900],[1280,720],[768,1024],[390,844],[320,568],[844,390]]){
+  const mobile=width<=700,dialogWidth=mobile?width-24:Math.min(1180,width-48);
+  const dialogHeight=height<=520?height-16:mobile?height-24:Math.min(height*.9,height-48);
+  const left=(width-dialogWidth)/2,top=(height-dialogHeight)/2;
+  assert.ok(left>=12&&top>=8,`viewport margins at ${width}×${height}`);
+  assert.equal(left+dialogWidth/2,width/2);assert.equal(top+dialogHeight/2,height/2);
+ }
  assert.equal(i18n.t('stageTitle'),'STARTING AREA');assert.equal(i18n.t('aircraftTitle'),'AIRCRAFT');
  assert.doesNotMatch(main,/createMissionSetup|applyMissionSelection|missionSetup\.open/,'main has one aircraft/mode/stage preparation flow');
  assert.equal(existsSync(new URL('./dist/mission-setup.mjs',import.meta.url)),false,'retired separate mission dialog module is removed');
