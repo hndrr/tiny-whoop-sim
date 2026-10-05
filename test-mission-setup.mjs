@@ -4,7 +4,7 @@ import {runInNewContext} from 'node:vm';
 import * as T from './dist/vendor/three.module.min.js';
 import {setupFlightSelection} from './dist/selection-integration.mjs';
 import {loadSelection,saveSelection} from './dist/flight-selector.mjs';
-import {FlightState} from './dist/flight.mjs';
+import {FlightState,GATES} from './dist/flight.mjs';
 import {setupPrecision} from './dist/precision-ui.mjs';
 import {PRECISION_OBJECTIVES} from './dist/precision-missions.mjs';
 import {VEHICLES,createVehicle,disposeVehicle,getVehicle} from './dist/vehicle-catalog.mjs';
@@ -270,6 +270,15 @@ try {
  state.crashed=true;controller.startPrecision();vehicleButton('micro65').click();form.requestSubmit();await flushFrames();assertClosed();assert.equal(starts,ongoingStarts);assert.equal(controller.mission.index,2);assert.equal(controller.mission.hold,0);assert.equal(state.crashed,false);assert.equal(state.paused,false);assert.deepEqual([state.x,state.y,state.z],[...PRECISION_OBJECTIVES[2].checkpoint]);assert.equal(state.aircraft,'micro65');
  console.log('PASS: applying aircraft within an active mission continues its objective; crashed mission retries the checkpoint and flies with the chosen aircraft');
 
+ // Same-area mission exit must restore practice without teleporting the drone.
+ controller.startPrecision();form.requestSubmit();await flushFrames();
+ assert.equal(state.practiceEnabled,false);const missionPosition=[state.x,state.y,state.z];
+ controller.leavePrecision();form.requestSubmit();await flushFrames();
+ assert.equal(controller.mission.active,false);assert.equal(state.practiceEnabled,true);
+ assert.deepEqual([state.x,state.y,state.z],missionPosition);
+ const beforePractice=state.practiceCount;state.updatePractice([state.x,state.y,state.z],.02);
+ assert.equal(state.practiceCount,beforePractice);
+ [state.x,state.y,state.z]=GATES[0];state.updatePractice([0,8,2.4],.02);assert.equal(state.practiceCount,beforePractice+1);
  // Leaving a mission is equally reversible until submit, then the selected free
  // stage is applied and flying begins immediately through the same controller.
  seed({paused:false,active:true});const beforeLeave=leaves,beforeStarts=starts;controller.leavePrecision();assert.equal(controller.mission.active,true);assertPending('free',controller.selection.selected.vehicle);regionButton('harbor').click();vehicleButton('scout85').click();form.requestSubmit();await flushFrames();

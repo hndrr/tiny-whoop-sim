@@ -32,7 +32,7 @@ export class PrecisionMission {
   [state.x,state.y,state.z]=o.checkpoint;
   state.heading=Math.atan2(-(o.target[0]-state.x),o.target[1]-state.y);
   // Disable legacy race bookkeeping while dispatches are active.
-  state.complete=true;state.explore=true;state.gate=GATES.length;state.finishTime=null;
+  state.practiceEnabled=false;state.complete=true;state.explore=true;state.gate=GATES.length;state.finishTime=null;
   this.hold=0;
  }
  update(state,dt){

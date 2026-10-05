@@ -32,7 +32,7 @@ mission.leave();const snapshot=JSON.stringify(state);mission.update(state,.05);a
 mission.start(state);state.paused=false;[state.x,state.y,state.z]=mission.objective.target;mission.hold=.79;state.crashed=true;mission.update(state,.05);assert.equal(mission.index,0);assert(!mission.done);
 mission.retry(state);assert.equal(mission.hold,0);assert(!state.crashed);
 // Integration invariant: whole frame collision handling precedes dispatch advancement.
-const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');assert(main.includes('s.crashed=true}precision.mission.update(s,dt);drone.position'));
+const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');assert(main.includes('s.crashed=true;s.updatePractice(before,Math.min(dt/2,.03),!precision.mission.active)}precision.mission.update(s,dt);drone.position'));
 assert(main.includes('onAreaChange:()=>{flightStarted=false}'));assert(main.includes('precision.mission.retry(s)'));
 console.log('PASS: four untimed dispatches, real geometry/clearance, forgiving hold, crash gating, per-objective retry, profile preservation, free-flight exit');
 // Every blocker is actionable and the evaluator exactly matches completion.

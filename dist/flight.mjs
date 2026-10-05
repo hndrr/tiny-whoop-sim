@@ -7,12 +7,32 @@ export class FlightState {
  constructor(){this.setAircraft('whoop75');this.reset()}
  setAircraft(id){this.aircraft=getFlightProfile(id).id}
  get profile(){return getFlightProfile(this.aircraft)}
- reset(){Object.assign(this,{x:0,y:0,z:1.2,vx:0,vy:0,vz:0,speed:0,throttle:.5,pitch:0,roll:0,heading:0,crashed:false,paused:true,gate:0,elapsed:0,complete:false,finishTime:null,explore:false,region:0,ditched:false})}
- relocate(index){const r=REGIONS[index];if(!r)throw Error("Unknown area");this.reset();[this.x,this.y,this.z]=regionSpawn(index);this.region=index;this.explore=index!==0;if(this.explore){this.complete=true;this.gate=GATES.length}}
- step(dt,keys,axes={}){
+ reset(){Object.assign(this,{x:0,y:0,z:1.2,vx:0,vy:0,vz:0,speed:0,throttle:.5,pitch:0,roll:0,heading:0,crashed:false,paused:true,gate:0,elapsed:0,complete:false,finishTime:null,explore:false,region:0,ditched:false,practiceEnabled:true,practiceCount:0,ringFlash:GATES.map(()=>0),ringLatched:GATES.map(()=>false),ringCooldown:GATES.map(()=>0)})}
+ relocate(index){const r=REGIONS[index];if(!r)throw Error("Unknown area");this.reset();[this.x,this.y,this.z]=regionSpawn(index);this.region=index;this.explore=index!==0}
+ // Forgiving, bidirectional practice: retain the original 1.6 m acceptance radius.
+ // A swept segment prevents fast passes from skipping a ring between frames.
+ updatePractice(before,dt,enabled=this.practiceEnabled){
+  if(!enabled||!this.practiceEnabled||this.paused||this.crashed)return;
+  const after=[this.x,this.y,this.z],delta=after.map((v,i)=>v-before[i]);
+  const length2=delta.reduce((sum,v)=>sum+v*v,0);
+  GATES.forEach((g,i)=>{
+   this.ringFlash[i]=Math.max(0,this.ringFlash[i]-dt);
+   this.ringCooldown[i]=Math.max(0,this.ringCooldown[i]-dt);
+   const startDistance=Math.hypot(...before.map((v,j)=>v-g[j]));
+   if(this.ringLatched[i]&&startDistance>2.2)this.ringLatched[i]=false;
+   const t=length2?Math.max(0,Math.min(1,g.reduce((sum,v,j)=>sum+(v-before[j])*delta[j],0)/length2)):0;
+   const distance=Math.hypot(...g.map((v,j)=>before[j]+t*delta[j]-v));
+   if(distance<1.6&&!this.ringLatched[i]){
+    this.ringLatched[i]=true;
+    if(this.ringCooldown[i]===0){this.practiceCount++;this.ringFlash[i]=1.2;this.ringCooldown[i]=.65}
+   }
+  });
+ }
+ step(dt,keys,axes={},practice=true){
   if(this.paused||this.crashed)return;
   dt=Math.min(dt,.03);
-  if(!this.complete)this.elapsed+=dt;
+  if(this.practiceEnabled)this.elapsed+=dt;
+  const before=[this.x,this.y,this.z];
   const input=controlInput(keys,axes),profile=this.profile,mix=1-Math.exp(-dt*6*profile.response);
   this.pitch+=(-input.pitch*.5-this.pitch)*mix;
   this.roll+=(input.roll*.5-this.roll)*mix;
@@ -40,10 +60,6 @@ export class FlightState {
    if(Math.abs(this.vz)>3||this.speed>5)this.crashed=true;
    this.z=floor;this.vz=0;this.vx*=.9;this.vy*=.9;
   }
-  const g=GATES[this.gate];
-  if(g&&Math.hypot(this.x-g[0],this.y-g[1],this.z-g[2])<1.6){
-   this.gate++;
-   if(this.gate===GATES.length){this.complete=true;this.finishTime=this.elapsed;this.explore=true}
-  }
+  if(practice)this.updatePractice(before,dt);
  }
 }

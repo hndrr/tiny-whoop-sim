@@ -28,11 +28,11 @@ Deploy `dist/` as static assets. Three.js 0.180.0 is vendored in `dist/vendor/`,
 
 Releasing a drag recenters that stick; blur, tab hiding, reset, pause and setup clear all held inputs.
 
-Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding but preserves horizontal inertia; use opposite input to brake. Fly through all 18 gates in order. The FPV camera tilts 11.5 degrees upward and banks with the frame.
+Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding but preserves horizontal inertia; use opposite input to brake. Practice through any of the 18 rings in any order, from either direction. Each pass flashes mint and adds one practice count; there is no race timer or finish requirement. The FPV camera tilts 11.5 degrees upward and banks with the frame.
 
 ## Architecture
 
-- `dist/flight.mjs`: deterministic lightweight drone motion and race state
+- `dist/flight.mjs`: deterministic lightweight drone motion and ring practice
 - `dist/world.mjs`: 8 km world terrain, seven distributed regions, landmark solids and safe exploration spawns
 - `dist/stage.mjs`: shared building geometry and swept collision volumes
 - `dist/main.mjs`: procedural Three.js scenery, ducted quadcopter, camera, post-process and UI integration
@@ -52,7 +52,7 @@ Two fly-through hangars with open loading bays and windows, interior roof beams 
 
 ## Island Range world
 
-The chart is 8,000 × 8,000 metres (terrain plus coastal water). Seven distributed regions: AIRFIELD, EAST HARBOR, RIDGE VIADUCT, HILL SETTLEMENT, NORTH QUARRY, LIGHTHOUSE POINT and WEST WIND RIDGE. Explore continuously or use SETUP → START FLIGHT to start at a distant region. Race completion preserves the finish time and continues free flight.
+The chart is 8,000 × 8,000 metres (terrain plus coastal water). Seven distributed regions: AIRFIELD, EAST HARBOR, RIDGE VIADUCT, HILL SETTLEMENT, NORTH QUARRY, LIGHTHOUSE POINT and WEST WIND RIDGE. Explore continuously or use SETUP → START FLIGHT to start at a distant region. Free flight is open from the start, with optional untimed ring practice.
 
 Terrain uses 500 m chunks with 24-segment nearby and 6-segment distant meshes; landmarks and airfield details are distance-culled. Trees are instanced. Coarse-pointer devices use a 1.25 pixel-ratio ceiling and 1024 px shadow maps. These are implementation optimizations, not a measured iPhone frame-rate guarantee. Browser/iPhone visual and physical touch validation remains unavailable in the build environment.
 
