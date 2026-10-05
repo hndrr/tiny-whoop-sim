@@ -84,3 +84,13 @@ Relative tuning (WHOOP 75 = 100):
 - CINE 95: acceleration 90, turn 78, top speed 94
 
 All-aircraft deterministic tests cover measured launch/turn/cruise differences, input-source parity, frame-time tolerance, retained profile across reset/relocation, selection apply/cancel/reopen, and descent reversal/release/surface behavior. Browser flight visual validation remains blocked by the available cloud graphics policy (GL_VENDOR/GL_RENDERER disabled); geometry and selector tests are not a substitute for flight visual QA.
+
+## Untimed precision dispatches
+
+SETUP → PRECISION starts four forgiving airfield objectives: approach the hangar, inspect its open central bay, leave through the same doorway, then return to the launch pad for a low hover. The target marker and relative direction/distance guide the pilot. Stay inside the broad target volume at a moderate speed until the short stability bar fills; there is no countdown, score or leaderboard. The final objective is explicitly a low hover, not rooftop landing or automatic landing.
+
+R / RETRY OBJECTIVE restores the current objective's safe checkpoint, paused, with completed objectives retained. Crash/ditch never completes an objective. Pause, setup and tab hiding freeze mission progress. Aircraft-only changes preserve it; changing area exits dispatch mode. FREE FLIGHT exits without teleporting or changing dynamics. REPLAY restarts the sequence. Dispatch progress lasts only for this session.
+
+English is the default interface language. SETUP offers English / 日本語 with locally remembered selection when storage is available. Switching language updates interface text without resetting the aircraft, flight position, or mission. FPV, ARM and familiar radio labels stay recognizable.
+
+Verification includes clear mission target volumes/routes against actual collision geometry, speed/height/stability tolerances, pause/crash gating, per-objective retry and aircraft preservation. WebGL flight visual validation is still blocked by the available cloud graphics policy; deterministic geometry checks do not substitute for a visual flight test.

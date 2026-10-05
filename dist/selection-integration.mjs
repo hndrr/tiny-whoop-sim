@@ -1,3 +1,4 @@
+import {i18n} from './i18n.mjs';
 import * as T from './vendor/three.module.min.js';
 import {REGIONS,REGION_ELEVATIONS} from './world.mjs';
 import {getVehicle} from './vehicle-catalog.mjs';
@@ -23,7 +24,7 @@ export function resetSelectedFlight(state,region){
  const index=REGIONS.findIndex(r=>r.id===region);
  if(index<=0)state.reset();else state.relocate(index);
 }
-export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,getDrone,state,clearInputs,updateHUD,setVehicle,closeHelp,selectorFactory=createFlightSelector}){
+export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,getDrone,state,clearInputs,updateHUD,setVehicle,closeHelp,onAreaChange=()=>{},selectorFactory=createFlightSelector}){
  let selected=loadSelection();
  setVehicle(selected.vehicle);state.setAircraft(selected.vehicle);resetSelectedFlight(state,selected.region);
  const button=document.createElement('button');button.id='chooseFlight';button.type='button';button.textContent='CHOOSE AREA + AIRCRAFT';
@@ -31,13 +32,13 @@ export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,r
  const oldSelect=document.getElementById('areaSelect'),oldButton=document.getElementById('relocate');
  const oldLabel=document.querySelector('label[for="areaSelect"]');if(oldLabel)oldLabel.hidden=true;oldSelect.hidden=true;oldButton.hidden=true;oldSelect.before(button,summary);
  const brand=document.querySelector('.brand');let brandTitle=brand?.firstChild;
- function refresh(){const vehicle=getVehicle(selected.vehicle),region=REGIONS.find(r=>r.id===selected.region);summary.textContent=`${vehicle.name} / ${region.label}`;if(brandTitle?.nodeType===3)brandTitle.textContent=vehicle.name;oldSelect.value=String(REGIONS.indexOf(region));}
+ function refresh(){button.textContent=i18n.t('chooseFlight');const vehicle=getVehicle(selected.vehicle),region=REGIONS.find(r=>r.id===selected.region);summary.textContent=`${vehicle.name} / ${i18n.t(`region.${region.id}`)}`;if(brandTitle?.nodeType===3)brandTitle.textContent=vehicle.name;oldSelect.value=String(REGIONS.indexOf(region));}
  const selector=selectorFactory({renderer,getSelection:()=>selected,
   captureStage:index=>withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,drone:getDrone()},index,camera=>capturePreview(renderer,scene,camera,360,200)),
   onOpen(){state.paused=true;clearInputs();closeHelp();updateHUD()},
-  onApply(next,{areaChanged,vehicleChanged}){if(vehicleChanged){setVehicle(next.vehicle);state.setAircraft(next.vehicle);}if(areaChanged)state.relocate(REGIONS.findIndex(r=>r.id===next.region));selected=next;state.paused=true;clearInputs();refresh();updateHUD()},
+  onApply(next,{areaChanged,vehicleChanged}){if(vehicleChanged){setVehicle(next.vehicle);state.setAircraft(next.vehicle);}if(areaChanged){onAreaChange();state.relocate(REGIONS.findIndex(r=>r.id===next.region));}selected=next;state.paused=true;clearInputs();refresh();updateHUD()},
   onClose(){state.paused=true;clearInputs();updateHUD()}
  });
  button.onclick=()=>selector.open();refresh();
- return {selector,get selected(){return {...selected}},reset(){resetSelectedFlight(state,selected.region);clearInputs();updateHUD()}};
+ return {selector,refreshLanguage(){selector.refreshLanguage?.();refresh()},setRegion(region){selected={...selected,region};refresh()},get selected(){return {...selected}},reset(){resetSelectedFlight(state,selected.region);clearInputs();updateHUD()}};
 }
