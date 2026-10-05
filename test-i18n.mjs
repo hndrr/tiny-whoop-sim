@@ -26,5 +26,10 @@ state.elapsed=2;state.paused=true;const before=JSON.stringify(state);i18n.setLan
 assert.equal(JSON.stringify(state),before,'language rendering must not change flight state');assert.equal(nodes.get('subtitle').textContent,'一時停止中');assert.equal(nodes.get('camera').textContent,'CAM: 追尾');assert.equal(nodes.get('start').innerHTML,'再開 <kbd>P</kbd>');
 i18n.setLanguage('en');localizeFlight(state,true,hud);assert.equal(nodes.get('subtitle').textContent,'FLIGHT PAUSED');assert.equal(nodes.get('camera').textContent,'CAM: FPV');assert.equal(JSON.stringify(state),before);
 state.crashed=true;state.ditched=true;i18n.setLanguage('ja');localizeFlight(state,true,hud);assert.equal(nodes.get('title').textContent,'着水');assert.equal(nodes.get('start').innerHTML,'やり直す');
-i18n.setLanguage('en');
+state.ditched=false;
+for(const language of ['ja','en']){
+ i18n.setLanguage(language);localizeFlight(state,true,hud);
+ assert.equal(i18n.t('crashed'),'CRASHED',`${language} crash status stays in English`);
+ assert.equal(nodes.get('title').textContent,'CRASHED',`${language} crash HUD title stays in English`);
+}
 console.log('PASS: live EN/JA HUD, keyboard markup, water/crash copy, and flight-state nonmutation');
