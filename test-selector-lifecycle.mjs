@@ -172,7 +172,7 @@ try {
  console.log('PASS: actual selector creates all five aircraft with descriptions, distinct ratings and arcade/baseline disclosure');
 
  selector.open();assert.equal(selector.isOpen,true);assert.equal(openCalls,1);assertPending('whoop75');
- assert.ok(document.activeElement===regionButton('airfield'),'opening focuses selected stage');assertLive({vehicle:'whoop75',region:'airfield'},0,0);
+ assert.ok(document.activeElement===document.getElementById('selectorFree'),'opening focuses mode without scrolling');assertLive({vehicle:'whoop75',region:'airfield'},0,0);
  selector.open();assert.equal(openCalls,1,'repeated open is idempotent');
  await flushFrames();
  assert.equal(dialog.querySelector('.preview-status').hidden,false,'preview failure leaves selection usable');

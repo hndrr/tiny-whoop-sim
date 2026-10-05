@@ -106,6 +106,10 @@ function sourceBetween(start,end){const from=main.indexOf(start),to=main.indexOf
 
 try {
  i18n.setLanguage('en');
+ const css=readFileSync(new URL('./dist/flight-selector.css',import.meta.url),'utf8');
+ assert.match(css,/inset:auto var\(--edge\) 83px auto/,'original right/bottom settings anchor');assert.match(css,/width:min\(350px,calc\(100vw - 36px\)\)/,'original compact settings width');assert.match(css,/height:min\(640px,calc\(100dvh - 130px\)\)/,'bounded, mode-independent settings height');
+ assert.match(css,/object-fit:contain/,'preview preserves its render-buffer aspect ratio');assert.doesNotMatch(css,/1120px|selectorMissionBrief/,'no enlarged dialog or mission-specific layout');assert.match(css,/bottom:72px;height:calc\(100dvh - 92px\)/,'short screens preserve original bounded anchor');
+ assert.equal(i18n.t('stageTitle'),'STARTING AREA');assert.equal(i18n.t('aircraftTitle'),'AIRCRAFT');
  assert.doesNotMatch(main,/createMissionSetup|applyMissionSelection|missionSetup\.open/,'main has one aircraft/mode/stage preparation flow');
  assert.equal(existsSync(new URL('./dist/mission-setup.mjs',import.meta.url)),false,'retired separate mission dialog module is removed');
  for(const id of ['help','closeHelp','helpPanel','pause','areaSelect','relocate']){const element=document.createElement(id==='areaSelect'?'select':id==='helpPanel'?'section':'button');element.id=id;document.body.append(element)}
@@ -150,7 +154,7 @@ try {
  function assertPending(mode,vehicle,region){
   assert.equal($('selectorMission').getAttribute('aria-pressed'),String(mode==='mission'));
   assert.equal($('selectorFree').getAttribute('aria-pressed'),String(mode==='free'));
-  assert.equal($('selectorStages').hidden,mode==='mission');assert.equal($('selectorMissionBrief').hidden,mode!=='mission');
+  assert.equal($('selectorStages').hidden,false);assert.equal($('selectorAreaHint').textContent,i18n.t(mode==='mission'?'missionAreaHint':'freeAreaHint'));
   assert.deepEqual(aircraft.children.filter(button=>button.getAttribute('aria-pressed')==='true').map(button=>button.dataset.vehicle),[vehicle]);
   assert.match(canvas.getAttribute('aria-label'),new RegExp(getVehicle(vehicle).name));
   if(region)assert.deepEqual(stages.children.filter(button=>button.getAttribute('aria-pressed')==='true').map(button=>button.dataset.region),[region]);
@@ -164,11 +168,28 @@ try {
  assert.equal(form.querySelectorAll('[type="submit"]').length,1,'one explicit Start commits all setup choices');
  assert.equal($('selectorFree').getAttribute('type'),'button');assert.equal($('selectorMission').getAttribute('type'),'button');
  for(const vehicle of VEHICLES){assert.ok(vehicleButton(vehicle.id));assert.equal(vehicleButton(vehicle.id).querySelector('.vehicle-trait').textContent,i18n.t(`vehicle.${vehicle.id}.trait`))}
- console.log('PASS: one real named selector contains mode buttons, all five aircraft, shared 3D preview, stage choices, mission briefing and one submit');
+ console.log('PASS: one real named selector contains mode buttons, all five aircraft, shared 3D preview, stage choices, constant-height area guidance and one submit');
+
+ assert.equal($('languageSelect').closest('.selector-heading'),dialog.querySelector('.selector-heading'),'language remains in the same compact settings panel');
+ dialog.querySelector('.selector-body').scrollTop=999;$('help').click();assert.equal(dialog.querySelector('.selector-body').scrollTop,0,'reopen shows choices and preview instead of old help scroll');assert.equal(dialog.open,true);assert.equal($('helpPanel').hidden,true,'SETUP skips the old intermediate menu');assert.equal($('help').getAttribute('aria-expanded'),'true');
+ const languageControl=$('languageSelect');languageControl.focus();languageControl.value='ja';languageControl.fire('change');assert.equal(i18n.getLanguage(),'ja');assert.equal(document.activeElement,languageControl,'keyboard language change retains focus');languageControl.fire('pointerdown');languageControl.value='en';languageControl.fire('change');assert.equal(document.activeElement,languageControl,'pointer language change keeps focus inside settings');languageControl.value='ja';languageControl.fire('change');const beforeShortcut=liveSnapshot();document.body.fire('keydown',{code:'KeyP',bubbles:true});assert.equal(liveSnapshot(),beforeShortcut,'even a body-targeted shortcut cannot fly behind settings');
+ cancel.click();await flushFrames();assert.equal($('help').getAttribute('aria-expanded'),'false');assert.equal(i18n.getLanguage(),'ja','Cancel affects flight choices, not the existing immediate language setting');i18n.setLanguage('en');
+ // No ordering contract: all six permutations can be edited in either mode,
+ // canceled without effects, then committed through the same single submit.
+ const orders=[['mode','area','aircraft'],['mode','aircraft','area'],['area','mode','aircraft'],['area','aircraft','mode'],['aircraft','mode','area'],['aircraft','area','mode']];
+ for(const mode of ['free','mission'])for(const order of orders){
+  seed({paused:false,active:false});const before=liveSnapshot(),saved=currentPersistence();
+  $('chooseFlight').click();const focused=document.activeElement;
+  const edit={mode:()=>$(mode==='mission'?'selectorMission':'selectorFree').click(),area:()=>regionButton('offshore').click(),aircraft:()=>vehicleButton('racer90').click()};
+  for(const key of order){edit[key]();assert.equal(document.activeElement,focused,'choice handlers never steal focus');assert.equal($('selectorStages').hidden,false,'areas stay in the same view');assert.equal(canvas.closest('[hidden]'),null,'preview stays in the same view')}
+  assertPending(mode,'racer90','offshore');cancel.click();await flushFrames();assert.equal(liveSnapshot(),before);assert.equal(currentPersistence(),saved);
+  $('chooseFlight').click();for(const key of order)edit[key]();form.requestSubmit();await flushFrames();assertClosed();assert.equal(state.paused,false);assert.deepEqual(controller.selection.selected,{vehicle:'racer90',region:mode==='mission'?'airfield':'offshore'});assert.equal(controller.mission.active,mode==='mission');
+ }
+ console.log('PASS: all six mode/area/aircraft edit orders in both modes remain pending, cancel cleanly, start once, retain the preview and never move focus');
 
  // Open through the real precision UI buttons and main callbacks. Neither mode
  // button may mutate mission progress until the shared form is submitted.
- for(const paused of [true,false])for(const active of [false,true])for(const entry of ['precisionFlight','freeFlight','chooseFlight']){
+ for(const paused of [true,false])for(const active of [false,true])for(const entry of ['help','precisionFlight','freeFlight','chooseFlight']){
   seed({paused,active});const before=liveSnapshot(),withoutPause=unpausedSnapshot(),saved=currentPersistence(),beforeCounts=counts(),beforeClears=stickClears;
   $(entry).click();assert.equal(dialog.open,true);assert.equal(state.paused,true);assertPending(entry==='precisionFlight'?'mission':entry==='freeFlight'?'free':active?'mission':'free',controller.selection.selected.vehicle);
   assert.equal(unpausedSnapshot(),withoutPause,'opening only pauses the current flight');assert.equal(keys.size,0);assert.equal(axes.throttle,0);assert.equal(stickClears,beforeClears+1);
@@ -199,8 +220,8 @@ try {
  canvas.fire('keydown',{code:'ArrowLeft',cancelable:true,bubbles:true});assert.equal(cameraChanges,beforeCameras);assert.deepEqual(counts(),beforeCounts);
  for(const mobile of [false,true])for(const language of ['ja','en']){
   coarse=mobile;i18n.setLanguage(language);assertPending('mission','racer90');assert.equal(liveSnapshot(),pendingSnapshot,'translation does not commit or restart');assert.deepEqual(counts(),beforeCounts);
-  assert.equal($('selectorTitle').textContent,i18n.t('selectorTitle'));assert.equal($('selectorFree').textContent,i18n.t('modeFree'));assert.equal($('selectorMission').textContent,i18n.t('modePrecision'));assert.equal(cancel.textContent,i18n.t('cancel'));assert.equal(start.textContent,i18n.t('startMissionFlight'));assert.equal($('selectorInputTip').textContent,i18n.t(mobile?'missionTouchControls':'missionKeyboardControls'));
-  assert.ok($('selectorMissionBrief').textContent.includes(i18n.t('approachTitle')));assert.ok($('selectorMissionBrief').textContent.includes(i18n.t('approachHint')));
+  assert.equal($('selectorTitle').textContent,i18n.t('flightSetup'));assert.equal($('selectorFree').textContent,i18n.t('modeFree'));assert.equal($('selectorMission').textContent,i18n.t('modePrecision'));assert.equal(cancel.textContent,i18n.t('cancel'));assert.equal(start.textContent,i18n.t('startMissionFlight'));
+  assert.equal($('selectorAreaHint').textContent,i18n.t('missionAreaHint')); 
   assert.equal(vehicleButton('racer90').querySelector('.vehicle-trait').textContent,i18n.t('vehicle.racer90.trait'));
  }
  $('selectorFree').click();regionButton('offshore').click();i18n.setLanguage('ja');assertPending('free','racer90','offshore');i18n.setLanguage('en');assertPending('free','racer90','offshore');cancel.click();await flushFrames();coarse=false;

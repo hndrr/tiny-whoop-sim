@@ -50,8 +50,8 @@ const {FlightState}=await import('./dist/flight.mjs');
 const {groundHeight}=await import('./dist/world.mjs');
 function integrationFor(selection){
  globalThis.localStorage={getItem:()=>JSON.stringify(selection)};
- const oldSelect={before(){},value:''},oldButton={},brand={firstChild:{nodeType:3,textContent:''}};
- globalThis.document={createElement:()=>({setAttribute(){}}),getElementById:id=>id==='areaSelect'?oldSelect:oldButton,querySelector:selector=>selector==='.brand'?brand:{}};
+ const oldSelect={before(){},value:''},oldButton={setAttribute(){}},brand={firstChild:{nodeType:3,textContent:''}};
+ globalThis.document={createElement:()=>({setAttribute(){}}),getElementById:id=>id==='areaSelect'?oldSelect:oldButton,querySelectorAll:()=>[],querySelector:selector=>selector==='.brand'?brand:{}};
  const state=new FlightState();let callbacks,vehicle,clears=0;
  const api=setupFlightSelection({state,setVehicle:id=>vehicle=id,clearInputs:()=>clears++,updateHUD(){},closeHelp(){},selectorFactory:options=>{callbacks=options;return {open(){}}}});
  return {state,api,get callbacks(){return callbacks},get vehicle(){return vehicle},get clears(){return clears}};

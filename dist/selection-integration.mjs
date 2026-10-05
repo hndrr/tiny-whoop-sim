@@ -35,10 +35,12 @@ export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,r
  function refresh(){button.textContent=i18n.t('chooseFlight');const vehicle=getVehicle(selected.vehicle),region=REGIONS.find(r=>r.id===selected.region);summary.textContent=`${vehicle.name} / ${i18n.t(`region.${region.id}`)}`;if(brandTitle?.nodeType===3)brandTitle.textContent=vehicle.name;oldSelect.value=String(REGIONS.indexOf(region));}
  const selector=selectorFactory({renderer,getSelection:()=>selected,getMode,
   captureStage:index=>withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,drone:getDrone()},index,camera=>capturePreview(renderer,scene,camera,360,200)),
-  onOpen(){previousPaused=state.paused;applied=false;state.paused=true;clearInputs();closeHelp();updateHUD()},
+  onOpen(){previousPaused=state.paused;applied=false;state.paused=true;clearInputs();closeHelp();document.getElementById('help').setAttribute('aria-expanded','true');updateHUD()},
   onApply(next,{areaChanged,vehicleChanged,mode='free'}){applied=true;if(vehicleChanged){setVehicle(next.vehicle);state.setAircraft(next.vehicle);}if(areaChanged){onAreaChange();state.relocate(REGIONS.findIndex(r=>r.id===next.region));}selected=next;onStart(mode);state.paused=false;clearInputs();refresh();updateHUD()},
-  onClose(){if(!applied)state.paused=previousPaused||document.hidden;clearInputs();updateHUD()}
+  onClose(){document.getElementById('help').setAttribute('aria-expanded','false');if(!applied)state.paused=previousPaused||document.hidden;clearInputs();updateHUD()}
  });
- button.onclick=()=>selector.open();refresh();
+ button.onclick=()=>selector.open();document.getElementById('help').onclick=()=>selector.open();
+ // Retain the existing control instructions inside the same settings surface.
+ const helpContent=document.createElement('div');helpContent.className='selector-help';for(const node of document.querySelectorAll('#helpPanel .controlRow,#helpPanel .tip'))helpContent.append(node);selector.element?.querySelector('.selector-body')?.append(helpContent);refresh();
  return {selector,refreshLanguage(){selector.refreshLanguage?.();refresh()},setRegion(region){selected={...selected,region};refresh()},get selected(){return {...selected}},reset(){resetSelectedFlight(state,selected.region);clearInputs();updateHUD()}};
 }
