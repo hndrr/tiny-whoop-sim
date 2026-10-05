@@ -5,3 +5,5 @@
 #areaSelect[hidden],#relocate[hidden],label[for="areaSelect"][hidden]{display:none}.flight-selector .selector-heading,.flight-selector .selector-footer{text-shadow:none;letter-spacing:normal}
 
 .preview-status{font:12px/1.5 Arial,sans-serif;color:#ecd49c;padding:0 16px}.preview-status[hidden]{display:none}
+
+.vehicle-option .vehicle-trait{color:#e1eadc}.vehicle-option .vehicle-metrics{font:10px/1.6 monospace;color:#a8dec9}.aircraft-inspector{align-self:start}

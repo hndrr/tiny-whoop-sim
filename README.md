@@ -62,12 +62,25 @@ Island terrain remains 8 × 8 km; the traversable airspace now covers 24 × 24 k
 
 ## Visual flight selection
 
-Open SETUP → CHOOSE AREA + AIRCRAFT for rendered previews of all eight real in-engine areas and a rotatable 3D airframe inspector. Three original aircraft presets (WHOOP 75, MICRO 65, SCOUT 85) change the actual chase-view model and FPV camera mount. They share the same stabilized flight physics.
+Open SETUP → CHOOSE AREA + AIRCRAFT for rendered previews of all eight real in-engine areas and a rotatable 3D airframe inspector. Five original aircraft (WHOOP 75, MICRO 65, SCOUT 85, RACER 90, CINE 95) have actual chase-view geometry, FPV camera mounts and distinct restrained handling. WHOOP 75 retains the original horizontal baseline. MICRO 65 turns quickly at a lower top speed; SCOUT 85 cruises faster with smoother turns; RACER 90 has the strongest acceleration tuning and highest speed; CINE 95 eases into turns and acceleration. The inspector shows relative horizontal acceleration, turn response and top-speed ratings (WHOOP 75 = 100). These are arcade tuning, not real-world hardware specifications.
 
 Apply commits the selection; Cancel/Escape discards pending changes. Changing only aircraft preserves position/progress; changing area starts a new paused flight. Reset preserves the chosen area/aircraft. Selection is remembered on this browser when local storage is available. Previews reuse the flight renderer and release temporary GPU targets; preview failures leave selection usable.
 
-Verification: Node physics, normalized controls, pointer lifecycle, airframe geometry, saved-selection recovery, reversible stage rendering and render-target cleanup checks pass. Real browser visual/input validation is still pending: the available cloud browser blocked localhost preview access, and standalone cloud Chromium could not open its process socket. No screenshots or physical-device frame-rate claims are included.
+Verification: Node physics, normalized controls, pointer lifecycle, airframe geometry, saved-selection recovery, reversible stage rendering and render-target cleanup checks pass. Real browser flight visual/input validation is still pending: the cloud browser graphics policy disables GL_VENDOR/GL_RENDERER. No physical-device frame-rate claims are included.
 
 ## Video brightness
 
 The always-visible BRIGHTNESS slider adjusts the 3D flight video in both FPV and chase views from 60% to 180%, without changing HTML telemetry or control brightness. 100% preserves the original look; the adjacent reset button restores it. The value is validated and remembered locally when browser storage is available. Setup thumbnails keep their original scene exposure.
+
+## Handling and controlled descent
+
+All five aircraft share the same normalized keyboard, mouse and touch path and stabilized vertical controls. W / stick up climbs; S / stick down descends. Full descent reaches approximately 8 m/s high above surfaces, easing continuously near the nearest terrain, sea or solid surface below. Overhead roofs do not count as ground when flying indoors. Releasing throttle brakes toward hover; held descent still moves downward and can hit structures or ditch in water. This is assistance, not automatic landing or collision avoidance.
+
+Relative tuning (WHOOP 75 = 100):
+- WHOOP 75: acceleration 100, turn 100, top speed 100
+- MICRO 65: acceleration 108, turn 118, top speed 90
+- SCOUT 85: acceleration 94, turn 88, top speed 110
+- RACER 90: acceleration 114, turn 104, top speed 118
+- CINE 95: acceleration 90, turn 78, top speed 94
+
+All-aircraft deterministic tests cover measured launch/turn/cruise differences, input-source parity, frame-time tolerance, retained profile across reset/relocation, selection apply/cancel/reopen, and descent reversal/release/surface behavior. Browser flight visual validation remains blocked by the available cloud graphics policy (GL_VENDOR/GL_RENDERER disabled); geometry and selector tests are not a substitute for flight visual QA.

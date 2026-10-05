@@ -1,9 +1,49 @@
+import {stepVertical} from './vertical-flight.mjs';
+import {getFlightProfile} from './flight-profiles.mjs';
 import {controlInput} from './controls.mjs';
 import {boundaryAcceleration,groundHeight,isOverWater,REGIONS,regionSpawn} from './world.mjs';
 export const GATES=[[0,12,2.4],[0,30,3.4],[-14,30,3],[-28,30,2.7],[-42,30,2.7],[-58,30,3],[-72,80,3.2],[-60,80,3.2],[-42,80,3.2],[-18,80,3.2],[10,95,5],[32,96,3],[32,86,2.5],[32,60,2.5],[66,65,4],[81,26,3],[44,2,3],[18,-5,2.6]];
 export class FlightState {
- constructor(){this.reset()}
+ constructor(){this.setAircraft('whoop75');this.reset()}
+ setAircraft(id){this.aircraft=getFlightProfile(id).id}
+ get profile(){return getFlightProfile(this.aircraft)}
  reset(){Object.assign(this,{x:0,y:0,z:1.2,vx:0,vy:0,vz:0,speed:0,throttle:.5,pitch:0,roll:0,heading:0,crashed:false,paused:true,gate:0,elapsed:0,complete:false,finishTime:null,explore:false,region:0,ditched:false})}
  relocate(index){const r=REGIONS[index];if(!r)throw Error("Unknown area");this.reset();[this.x,this.y,this.z]=regionSpawn(index);this.region=index;this.explore=index!==0;if(this.explore){this.complete=true;this.gate=GATES.length}}
- step(dt,keys,axes={}){if(this.paused||this.crashed)return;dt=Math.min(dt,.03);if(!this.complete)this.elapsed+=dt;const input=controlInput(keys,axes),mix=1-Math.exp(-dt*6);this.pitch+=(-input.pitch*.5-this.pitch)*mix;this.roll+=(input.roll*.5-this.roll)*mix;this.heading+=dt*1.35*input.yaw;const lift=input.throttle;this.throttle=.5+lift*.35;const upx=Math.cos(this.heading)*Math.sin(this.roll)+Math.sin(this.heading)*Math.sin(this.pitch)*Math.cos(this.roll),upy=Math.sin(this.heading)*Math.sin(this.roll)-Math.cos(this.heading)*Math.sin(this.pitch)*Math.cos(this.roll),upz=Math.cos(this.pitch)*Math.cos(this.roll);const thrust=9.81/Math.max(.65,upz)+lift*8;this.vx=(this.vx+upx*thrust*dt)*Math.exp(-dt*.45);this.vy=(this.vy+upy*thrust*dt)*Math.exp(-dt*.45);this.vz=(this.vz+(upz*thrust-9.81)*dt)*Math.exp(-dt*1.6);const edge=boundaryAcceleration(this.x,this.y);this.vx+=edge[0]*dt;this.vy+=edge[1]*dt;this.x+=this.vx*dt;this.y+=this.vy*dt;this.z+=this.vz*dt;this.speed=Math.hypot(this.vx,this.vy,this.vz);const floor=groundHeight(this.x,this.y)+.08;if(this.z<floor){if(isOverWater(this.x,this.y)){this.crashed=true;this.ditched=true}if(Math.abs(this.vz)>3||this.speed>5)this.crashed=true;this.z=floor;this.vz=0;this.vx*=.9;this.vy*=.9}const g=GATES[this.gate];if(g&&Math.hypot(this.x-g[0],this.y-g[1],this.z-g[2])<1.6){this.gate++;if(this.gate===GATES.length){this.complete=true;this.finishTime=this.elapsed;this.explore=true}}}
+ step(dt,keys,axes={}){
+  if(this.paused||this.crashed)return;
+  dt=Math.min(dt,.03);
+  if(!this.complete)this.elapsed+=dt;
+  const input=controlInput(keys,axes),profile=this.profile,mix=1-Math.exp(-dt*6*profile.response);
+  this.pitch+=(-input.pitch*.5-this.pitch)*mix;
+  this.roll+=(input.roll*.5-this.roll)*mix;
+  this.heading+=dt*1.35*profile.response*input.yaw;
+  const lift=input.throttle;
+  this.throttle=.5+lift*.35;
+  const upx=Math.cos(this.heading)*Math.sin(this.roll)+Math.sin(this.heading)*Math.sin(this.pitch)*Math.cos(this.roll),
+   upy=Math.sin(this.heading)*Math.sin(this.roll)-Math.cos(this.heading)*Math.sin(this.pitch)*Math.cos(this.roll),
+   upz=Math.cos(this.pitch)*Math.cos(this.roll);
+  const thrust=9.81/Math.max(.65,upz)+lift*8;
+  // Preserve the original WHOOP 75 horizontal baseline. Profiles tune launch,
+  // bank/yaw response and neutral-throttle terminal speed on the same inputs.
+  const drag=Math.exp(-dt*.45*profile.acceleration/profile.topSpeed);
+  this.vx=(this.vx+upx*thrust*profile.acceleration*dt)*drag;
+  this.vy=(this.vy+upy*thrust*profile.acceleration*dt)*drag;
+  const vertical=stepVertical(this,lift,dt);
+  this.vz=vertical.vz;
+  const edge=boundaryAcceleration(this.x,this.y);
+  this.vx+=edge[0]*dt;this.vy+=edge[1]*dt;
+  this.x+=this.vx*dt;this.y+=this.vy*dt;this.z+=vertical.dz;
+  this.speed=Math.hypot(this.vx,this.vy,this.vz);
+  const floor=groundHeight(this.x,this.y)+.08;
+  if(this.z<floor){
+   if(isOverWater(this.x,this.y)){this.crashed=true;this.ditched=true}
+   if(Math.abs(this.vz)>3||this.speed>5)this.crashed=true;
+   this.z=floor;this.vz=0;this.vx*=.9;this.vy*=.9;
+  }
+  const g=GATES[this.gate];
+  if(g&&Math.hypot(this.x-g[0],this.y-g[1],this.z-g[2])<1.6){
+   this.gate++;
+   if(this.gate===GATES.length){this.complete=true;this.finishTime=this.elapsed;this.explore=true}
+  }
+ }
 }

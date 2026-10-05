@@ -13,7 +13,7 @@ for(const v of VEHICLES){
  const geometry=group.children.find(o=>o.geometry).geometry;let disposed=false;geometry.addEventListener('dispose',()=>disposed=true);disposeVehicle(group);assert.equal(disposed,true);
 }
 assert.ok(bounds[1]<bounds[0]&&bounds[0]<bounds[2]);assert.notEqual(counts[0],counts[2]);
-console.log('PASS: all three actual airframes, dimensions, guarded/open geometry, distinct propellers, GPU disposal');
+console.log('PASS: all five actual airframes, dimensions, guarded/open geometry, distinct propellers, GPU disposal');
 assert.deepEqual(normalizeSelection({vehicle:'micro65',region:'harbor'}),{vehicle:'micro65',region:'harbor'});
 for(const bad of [null,{},false,{vehicle:'other',region:'bad'}])assert.deepEqual(normalizeSelection(bad),{vehicle:'whoop75',region:'airfield'});
 let saved=null;globalThis.localStorage={getItem:()=>saved,setItem:(k,v)=>saved=v};saveSelection({vehicle:'scout85',region:'offshore'});assert.deepEqual(loadSelection(),{vehicle:'scout85',region:'offshore'});saved='{invalid';assert.equal(loadSelection().region,'airfield');
@@ -56,9 +56,9 @@ function integrationFor(selection){
  const api=setupFlightSelection({state,setVehicle:id=>vehicle=id,clearInputs:()=>clears++,updateHUD(){},closeHelp(){},selectorFactory:options=>{callbacks=options;return {open(){}}}});
  return {state,api,get callbacks(){return callbacks},get vehicle(){return vehicle},get clears(){return clears}};
 }
-for(const vehicle of ['whoop75','micro65','scout85']){
- const session=integrationFor({region:'airfield',vehicle});assert.equal(session.state.z,1.2,'initial airfield pad');assert.equal(session.vehicle,vehicle);
- Object.assign(session.state,{x:90,y:100,z:34,crashed:true,paused:false,elapsed:12,gate:3});session.api.reset();assert.equal(session.state.z,1.2,'reset/crash restart returns to pad');assert.equal(session.state.crashed,false);assert.equal(session.state.paused,true);assert.equal(session.state.gate,0);assert.equal(session.vehicle,vehicle);assert.equal(session.clears,1);
+for(const {id:vehicle} of VEHICLES){
+ const session=integrationFor({region:'airfield',vehicle});assert.equal(session.state.z,1.2,'initial airfield pad');assert.equal(session.vehicle,vehicle);assert.equal(session.state.aircraft,vehicle);
+ Object.assign(session.state,{x:90,y:100,z:34,crashed:true,paused:false,elapsed:12,gate:3});session.api.reset();assert.equal(session.state.z,1.2,'reset/crash restart returns to pad');assert.equal(session.state.crashed,false);assert.equal(session.state.paused,true);assert.equal(session.state.gate,0);assert.equal(session.vehicle,vehicle);assert.equal(session.state.aircraft,vehicle);assert.equal(session.clears,1);
 }
 for(const region of REGIONS.slice(1)){
  const session=integrationFor({region:region.id,vehicle:'micro65'});assert.equal(session.state.region,REGIONS.indexOf(region));assert.equal(session.state.z,groundHeight(session.state.x,session.state.y)+7);
@@ -69,3 +69,11 @@ session.callbacks.onApply({region:'airfield',vehicle:'scout85'},{areaChanged:fal
 session.callbacks.onApply({region:'harbor',vehicle:'scout85'},{areaChanged:true,vehicleChanged:false});
 session.callbacks.onApply({region:'airfield',vehicle:'scout85'},{areaChanged:true,vehicleChanged:false});assert.equal(session.state.z,7,'explicit relocation retains historical airborne spawn');session.api.reset();assert.equal(session.state.z,1.2,'subsequent race reset uses pad');
 console.log('PASS: real selection initialization/reset at 1.2m race pad, crash recovery, other-region spawns, explicit 7m relocation and aircraft-only position preservation');
+
+for(const {id:vehicle} of VEHICLES){
+ const active=integrationFor({region:'airfield',vehicle:'whoop75'});
+ active.callbacks.onOpen();active.callbacks.onApply({region:'airfield',vehicle},{areaChanged:false,vehicleChanged:true});
+ assert.equal(active.state.aircraft,vehicle);assert.equal(active.vehicle,vehicle);assert.equal(active.api.selected.vehicle,vehicle);active.callbacks.onClose();active.api.reset();assert.equal(active.state.aircraft,vehicle);
+ globalThis.localStorage={getItem:()=>saved,setItem:(k,v)=>saved=v};saveSelection({vehicle,region:'airfield'});assert.equal(loadSelection().vehicle,vehicle);
+}
+console.log('PASS: all five selected profiles initialize/apply/reset/persist with their actual geometry IDs');
