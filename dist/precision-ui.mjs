@@ -5,7 +5,7 @@ export function setupPrecision({scene,state,start,leave,retry}){
  const mission=new PrecisionMission(),panel=document.createElement('aside');panel.id='dispatchPanel';panel.hidden=true;
  panel.innerHTML='<small id="dispatchCount"></small><h2 id="dispatchTitle"></h2><p id="dispatchDistance"></p><p id="dispatchAltitude"></p><div class="dispatch-progress" id="dispatchProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i id="dispatchFill"></i></div><small id="dispatchStatus" role="status"></small><p id="dispatchHint"></p><button id="retryDispatch"></button><button id="leaveDispatch" data-i18n="modeFree"></button>';
  document.body.append(panel);
- const modes=document.createElement('div');modes.id='flightActivities';modes.innerHTML='<button id="freeFlight" data-i18n="modeFree"></button><button id="precisionFlight" data-i18n="modePrecision"></button>';document.getElementById('helpPanel').prepend(modes);
+ const modes=document.createElement('div');modes.id='flightActivities';modes.innerHTML='<button id="freeFlight" data-i18n="modeFree"></button><button id="precisionFlight" data-i18n="modePrecision" aria-describedby="precisionDescription"></button>';const description=document.createElement('p');description.id='precisionDescription';description.setAttribute('data-i18n','precisionDescription');document.getElementById('helpPanel').prepend(modes,description);
  function bindAction(id,action){const button=document.getElementById(id);button.onclick=event=>{action();if(event.detail>0)button.blur()}}
  bindAction('freeFlight',leave);bindAction('precisionFlight',start);bindAction('retryDispatch',retry);bindAction('leaveDispatch',leave);
  const marker=new T.Group();scene.add(marker);
@@ -18,7 +18,7 @@ export function setupPrecision({scene,state,start,leave,retry}){
  }
  const diamond=new T.Mesh(new T.OctahedronGeometry(.35),material);diamond.position.z=3;marker.add(diamond);
  const $=id=>document.getElementById(id),t=(key,params)=>i18n.t(key,params);
- function render(){
+ function render(started=false){
   panel.hidden=!mission.active;marker.visible=!!mission.objective;
   $('freeFlight').setAttribute('aria-pressed',String(!mission.active));$('precisionFlight').setAttribute('aria-pressed',String(mission.active));
   document.body.classList.toggle('precision-active',mission.active);
@@ -39,7 +39,7 @@ export function setupPrecision({scene,state,start,leave,retry}){
    const direction=Math.abs(angle)<.35?'targetAhead':Math.abs(angle)>2.55?'targetBehind':angle>0?'targetLeft':'targetRight';
    $('dispatchDistance').textContent=t(f.distance<=f.radius?'targetInside':direction,{distance:f.distance.toFixed(1)});
    $('dispatchAltitude').textContent=t('targetAltitude',{height:f.altitude.toFixed(1),min:f.minAltitude<.1?f.minAltitude.toFixed(3):f.minAltitude.toFixed(1),max:f.maxAltitude.toFixed(1)});
-   const params={distance:f.remaining.toFixed(1),speed:f.horizontalSpeed.toFixed(1),limit:f.horizontalLimit,vertical:f.verticalSpeed.toFixed(1),verticalLimit:f.verticalLimit,progress};
+   const params={action:t(started||state.elapsed>0?'resume':'startFlight'),distance:f.remaining.toFixed(1),speed:f.horizontalSpeed.toFixed(1),limit:f.horizontalLimit,vertical:f.verticalSpeed.toFixed(1),verticalLimit:f.verticalLimit,progress};
    $('dispatchStatus').textContent=t('feedback_'+f.reason,params);
   }else {$('dispatchDistance').textContent='';$('dispatchAltitude').textContent=''}
 

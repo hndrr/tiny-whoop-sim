@@ -33,3 +33,9 @@ for(const language of ['ja','en']){
  assert.equal(nodes.get('title').textContent,'CRASHED',`${language} crash HUD title stays in English`);
 }
 console.log('PASS: live EN/JA HUD, keyboard markup, water/crash copy, and flight-state nonmutation');
+
+state.crashed=false;state.paused=true;state.elapsed=0;i18n.setLanguage('ja');localizeFlight(state,true,hud);assert.equal(nodes.get('pause').textContent,'飛行開始');assert.equal(nodes.get('start').innerHTML,'飛行開始 <kbd>P</kbd>');
+localizeFlight(state,true,hud,true);assert.equal(nodes.get('pause').textContent,'再開');assert.equal(nodes.get('start').innerHTML,'再開 <kbd>P</kbd>');
+state.paused=false;localizeFlight(state,true,hud,true);assert.equal(nodes.get('pause').textContent,'一時停止');
+for(const key of ['pauseTitle','armPause','oceanTip','feedback_paused'])assert(!CATALOG.ja[key].includes('ARM'),`${key} explains the action without ARM`);
+console.log('PASS: Japanese initial start, untimed resume, active pause and acronym-free guidance');

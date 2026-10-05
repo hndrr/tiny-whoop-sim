@@ -77,3 +77,14 @@ for(const {id:vehicle} of VEHICLES){
  globalThis.localStorage={getItem:()=>saved,setItem:(k,v)=>saved=v};saveSelection({vehicle,region:'airfield'});assert.equal(loadSelection().vehicle,vehicle);
 }
 console.log('PASS: all five selected profiles initialize/apply/reset/persist with their actual geometry IDs');
+
+for(const {id:vehicle} of VEHICLES){
+ const active=integrationFor({region:'offshore',vehicle:'whoop75'});
+ Object.assign(active.state,{x:321,y:456,z:20,elapsed:17,gate:3});
+ let stored;globalThis.localStorage={setItem:(key,value)=>stored=JSON.parse(value)};
+ active.api.applyMissionSelection(vehicle);
+ assert.equal(active.vehicle,vehicle);assert.equal(active.state.aircraft,vehicle);
+ assert.deepEqual(active.api.selected,{region:'airfield',vehicle});assert.deepEqual(stored,active.api.selected);
+ assert.deepEqual([active.state.x,active.state.y,active.state.z,active.state.elapsed,active.state.gate],[321,456,20,17,3],'aircraft commit leaves checkpoint reset to launch controller');
+}
+console.log('PASS: mission aircraft commit updates actual geometry/profile, airfield summary and persistence for all five aircraft');

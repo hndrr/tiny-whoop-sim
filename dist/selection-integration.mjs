@@ -2,7 +2,7 @@ import {i18n} from './i18n.mjs';
 import * as T from './vendor/three.module.min.js';
 import {REGIONS,REGION_ELEVATIONS} from './world.mjs';
 import {getVehicle} from './vehicle-catalog.mjs';
-import {createFlightSelector,capturePreview,loadSelection} from './flight-selector.mjs';
+import {createFlightSelector,capturePreview,loadSelection,saveSelection} from './flight-selector.mjs';
 // A reversible snapshot of scene presentation only. Physics and live camera are untouched.
 export function withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,drone},index,render){
  const r=REGIONS[index],height=REGION_ELEVATIONS[index],saved=[];
@@ -40,5 +40,5 @@ export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,r
   onClose(){state.paused=true;clearInputs();updateHUD()}
  });
  button.onclick=()=>selector.open();refresh();
- return {selector,refreshLanguage(){selector.refreshLanguage?.();refresh()},setRegion(region){selected={...selected,region};refresh()},get selected(){return {...selected}},reset(){resetSelectedFlight(state,selected.region);clearInputs();updateHUD()}};
+ return {selector,applyMissionSelection(vehicle){const next=getVehicle(vehicle);if(next.id!==selected.vehicle){setVehicle(next.id);state.setAircraft(next.id)}selected={region:'airfield',vehicle:next.id};saveSelection(selected);refresh()},refreshLanguage(){selector.refreshLanguage?.();refresh()},setRegion(region){selected={...selected,region};refresh()},get selected(){return {...selected}},reset(){resetSelectedFlight(state,selected.region);clearInputs();updateHUD()}};
 }

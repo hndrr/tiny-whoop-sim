@@ -87,11 +87,11 @@ All-aircraft deterministic tests cover measured launch/turn/cruise differences, 
 
 ## Untimed precision dispatches
 
-SETUP → PRECISION starts four forgiving airfield objectives: approach the hangar, inspect its open central bay, leave through the same doorway, then return to the launch pad for a low hover. The target marker and relative direction/distance guide the pilot. Stay inside the broad target volume at a moderate speed until the short stability bar fills; there is no countdown, score or leaderboard. The final objective is explicitly a low hover, not rooftop landing or automatic landing.
+SETUP → PRECISION opens preparation for four forgiving airfield objectives: approach the hangar, inspect its open central bay, leave through the same doorway, then return to the launch pad for a low hover. The target marker and relative direction/distance guide the pilot. Stay inside the broad target volume at a moderate speed until the short stability bar fills; there is no countdown, score or leaderboard. The final objective is explicitly a low hover, not rooftop landing or automatic landing.
 
 R / RETRY OBJECTIVE restores the current objective's safe checkpoint, paused, with completed objectives retained. Crash/ditch never completes an objective. Pause, setup and tab hiding freeze mission progress. Aircraft-only changes preserve it; changing area exits dispatch mode. FREE FLIGHT exits without teleporting or changing dynamics. REPLAY restarts the sequence. Dispatch progress lasts only for this session.
 
-English is the default interface language. SETUP offers English / 日本語 with locally remembered selection when storage is available. Switching language updates interface text without resetting the aircraft, flight position, or mission. FPV, ARM and familiar radio labels stay recognizable.
+English is the default interface language. SETUP offers English / 日本語 with locally remembered selection when storage is available. Switching language updates interface text without resetting the aircraft, flight position, or mission. FPV and familiar radio labels stay recognizable; Japanese start/pause actions use plain language.
 
 Verification includes clear mission target volumes/routes against actual collision geometry, speed/height/stability tolerances, pause/crash gating, per-objective retry and aircraft preservation. WebGL flight visual validation is still blocked by the available cloud graphics policy; deterministic geometry checks do not substitute for a visual flight test.
 
@@ -100,3 +100,9 @@ Verification includes clear mission target volumes/routes against actual collisi
 PRECISION is hover practice: no hoops need to be crossed. Follow the mint ground diamond, enter its zone, set the displayed altitude and brake with opposite input if drifting. The four corner posts show the allowed height band; the filled diamond is inscribed in the accepted circular area. The HUD always shows a relative target direction even behind the aircraft, horizontal distance, current/required altitude, and the current unmet condition. Hold progress grows only while all conditions qualify. Race hoops are hidden during PRECISION and restored on leaving it; physics and objective tolerances are unchanged. Japanese guidance is available; CRASHED remains in English.
 
 Guidance verification: shared evaluator tests cover every failed condition and inclusive boundary, all five airframes complete with released neutral controls from a valid hover, and continuous four-objective flights pass at 30/60/120 Hz. HUD/marker lifecycle and mission input-clear wiring are tested. Responsive layout is code-reviewed only; cloud WebGL restrictions still prevent visual flight QA.
+
+## Mission preparation
+
+SETUP → PRECISION (日本語: ミッション) now opens a reversible confirmation with the first objective and the chosen aircraft. Aircraft edits here are pending. Cancel/Escape keeps the current position, mission progress and aircraft. START FLIGHT (この機体で開始) commits the aircraft, moves to the airfield checkpoint and begins flying in one step; there is no second ARM step. Mission retry still resets to a safe paused checkpoint. Japanese flight actions say 飛行開始 / 一時停止 / 再開; CRASHED stays English. Preparation uses a native modal dialog; its keys do not control the flight behind it.
+
+Verification uses real setup/HUD callbacks in a dependency-free Node DOM contract harness plus the full simulation tests. Browser/WebGL visual QA remains unavailable in this cloud environment.

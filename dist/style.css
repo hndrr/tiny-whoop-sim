@@ -63,3 +63,7 @@
 @media(max-height:520px){#dispatchPanel{top:58px;bottom:164px;max-height:none;min-height:0;width:min(280px,42vw)}#dispatchStatus{display:block;margin-left:0}#dispatchDistance{display:block;margin:4px 0}#dispatchAltitude{margin:4px 0}.precision-active #message{left:26%;width:44vw}.precision-active #homeNav{display:none}}
 /* Mission card and the persistent ARM button already explain a paused mission. */
 .precision-paused #message{display:none!important}
+
+#precisionDescription{font-size:11px;line-height:1.5;margin:-4px 0 12px;color:#cbd9d1}
+
+#missionSetup{position:fixed;inset:0;margin:auto;width:min(480px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto;padding:24px;color:#edf4eb;background:#13252b;border:1px solid #8ca99f;border-radius:12px;font:14px/1.6 Arial,sans-serif;z-index:100}#missionSetup::backdrop{background:#041217d9}#missionSetup h2{font-size:23px;margin:0 0 8px}#missionSetup h3{font-size:16px;margin:16px 0 4px}#missionSetup p{margin:8px 0}#missionSetup label{display:block;margin-top:16px}#missionAircraft{width:100%;min-height:44px;background:#1a3036;color:inherit;border:1px solid #829a8e;font:inherit;padding:8px}#missionAircraftTrait,.mission-input-tip,.mission-start-note{font-size:12px;color:#cbd9d1}.mission-setup-actions{display:flex;gap:10px;margin-top:20px}#missionSetup button{flex:1;min-height:44px;padding:10px;font:inherit}#launchMission{background:#baf2cf;color:#123c32}#missionSetup :focus-visible{outline:3px solid #eefccf;outline-offset:3px}
