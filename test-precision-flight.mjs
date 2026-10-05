@@ -52,3 +52,16 @@ for(const {id:aircraft} of VEHICLES)for(const fps of [30,60,120]){
 }
 console.log('PASS: all five aircraft continuously fly four dispatches with real controls/collisions at 30, 60 and 120 Hz, no checkpoint teleport, no race time or score');
 console.log(JSON.stringify(results,null,2));
+// Releasing actual controls at a valid hover can finish every objective for every airframe.
+for(const {id} of VEHICLES)for(const objective of PRECISION_OBJECTIVES){
+ const state=new FlightState(),mission=new PrecisionMission();state.setAircraft(id);mission.start(state);mission.index=PRECISION_OBJECTIVES.indexOf(objective);state.paused=false;
+ [state.x,state.y,state.z]=objective.target;state.vx=.4;state.vy=.3;state.vz=.1;
+ const keys=new Set(['ArrowUp','KeyW']);keys.clear();
+ const index=mission.index;
+ for(let tick=0;tick<90&&mission.index===index;tick++){
+  for(let sub=0;sub<2;sub++){const before=[state.x,state.y,state.z];state.step(1/120,keys,{pitch:0,roll:0,yaw:0,throttle:0});assert(!segmentHitsSolid(before,[state.x,state.y,state.z]));}
+  mission.update(state,1/60);
+ }
+ assert.equal(mission.index,index+1,`${id} ${objective.id}: release-to-hover completes`);assert(!state.crashed);
+}
+console.log('PASS: released neutral controls finish all four hover objectives on all five airframes');

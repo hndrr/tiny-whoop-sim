@@ -9,13 +9,17 @@ export const PRECISION_OBJECTIVES=Object.freeze([
  {id:'return',title:'returnTitle',hint:'returnHint',target:[0,0,.65],checkpoint:[-18,30,3]},
 ].map(o=>Object.freeze({...o,target:Object.freeze(o.target),checkpoint:Object.freeze(o.checkpoint)})));
 export const HOLD_SECONDS=.8;
-export function qualifiesForObjective(state,objective){
- if(!objective||state.crashed||state.paused)return false;
- const landing=objective.id==='return',clearance=state.z-groundHeight(state.x,state.y);
- return Math.hypot(state.x-objective.target[0],state.y-objective.target[1])<=(landing?5:4)
-  && clearance>=(landing?.075:1.2)&&clearance<=(landing?1.5:4.8)
-  &&Math.hypot(state.vx,state.vy)<=(landing?2.5:3)&&Math.abs(state.vz)<=(landing?1.5:2);
+// The HUD and completion use the same evaluator, so advice cannot drift from rules.
+export function objectiveFeedback(state,objective){
+ if(!objective)return {reason:'complete',qualifies:false};
+ const landing=objective.id==='return',radius=landing?5:4,minAltitude=landing?.075:1.2,maxAltitude=landing?1.5:4.8;
+ const horizontalLimit=landing?2.5:3,verticalLimit=landing?1.5:2;
+ const distance=Math.hypot(state.x-objective.target[0],state.y-objective.target[1]);
+ const altitude=state.z-groundHeight(state.x,state.y),horizontalSpeed=Math.hypot(state.vx,state.vy),verticalSpeed=Math.abs(state.vz);
+ const reason=state.crashed?'crashed':state.paused?'paused':distance>radius?'closer':altitude<minAltitude?'ascend':altitude>maxAltitude?'descend':horizontalSpeed>horizontalLimit?'brake':verticalSpeed>verticalLimit?'vertical':'hold';
+ return {reason,qualifies:reason==='hold',distance,radius,remaining:Math.max(0,distance-radius),altitude,minAltitude,maxAltitude,horizontalSpeed,verticalSpeed,horizontalLimit,verticalLimit};
 }
+export function qualifiesForObjective(state,objective){return objectiveFeedback(state,objective).qualifies}
 export class PrecisionMission {
  constructor(){this.active=false;this.index=0;this.hold=0;this.done=false}
  get objective(){return this.active&&!this.done?PRECISION_OBJECTIVES[this.index]:null}

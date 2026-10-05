@@ -94,3 +94,9 @@ R / RETRY OBJECTIVE restores the current objective's safe checkpoint, paused, wi
 English is the default interface language. SETUP offers English / 日本語 with locally remembered selection when storage is available. Switching language updates interface text without resetting the aircraft, flight position, or mission. FPV, ARM and familiar radio labels stay recognizable.
 
 Verification includes clear mission target volumes/routes against actual collision geometry, speed/height/stability tolerances, pause/crash gating, per-objective retry and aircraft preservation. WebGL flight visual validation is still blocked by the available cloud graphics policy; deterministic geometry checks do not substitute for a visual flight test.
+
+### Mission guidance
+
+PRECISION is hover practice: no hoops need to be crossed. Follow the mint ground diamond, enter its zone, set the displayed altitude and brake with opposite input if drifting. The four corner posts show the allowed height band; the filled diamond is inscribed in the accepted circular area. The HUD always shows a relative target direction even behind the aircraft, horizontal distance, current/required altitude, and the current unmet condition. Hold progress grows only while all conditions qualify. Race hoops are hidden during PRECISION and restored on leaving it; physics and objective tolerances are unchanged. Japanese guidance is available; CRASHED remains in English.
+
+Guidance verification: shared evaluator tests cover every failed condition and inclusive boundary, all five airframes complete with released neutral controls from a valid hover, and continuous four-objective flights pass at 30/60/120 Hz. HUD/marker lifecycle and mission input-clear wiring are tested. Responsive layout is code-reviewed only; cloud WebGL restrictions still prevent visual flight QA.

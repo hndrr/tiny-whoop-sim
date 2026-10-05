@@ -10,7 +10,11 @@ const ui=setupPrecision({scene,state,start:()=>actions.push('start'),leave:()=>a
 ui.render();assert(nodes.get('dispatchPanel').hidden);assert(!scene.marker.visible);
 nodes.get('precisionFlight').onclick({detail:1});assert.deepEqual(actions,['start']);assert.equal(nodes.get('precisionFlight').blurCount,1);
 nodes.get('retryDispatch').onclick({detail:0});assert.equal(nodes.get('retryDispatch').blurCount,0);nodes.get('retryDispatch').onclick({detail:1});assert.equal(nodes.get('retryDispatch').blurCount,1);
-ui.mission.start(state);ui.render();assert(!nodes.get('dispatchPanel').hidden);assert(scene.marker.visible);assert.equal(nodes.get('dispatchTitle').textContent,'APPROACH HANGAR');assert.deepEqual(scene.marker.position.toArray(),[-18,30,3]);
+ui.mission.start(state);ui.render();assert(!nodes.get('dispatchPanel').hidden);assert(scene.marker.visible);assert.equal(nodes.get('dispatchTitle').textContent,'APPROACH HANGAR');assert.deepEqual(scene.marker.position.toArray(),[-18,30,0]);
+assert.equal(nodes.get('dispatchStatus').textContent,'Press ARM / P to fly');
+state.paused=false;ui.render();assert.match(nodes.get('dispatchStatus').textContent,/Move/);
+[state.x,state.y,state.z]=[-18,30,3];ui.render();assert.match(nodes.get('dispatchStatus').textContent,/Hold here/);assert.equal(nodes.get('dispatchProgress').attrs['aria-valuenow'],'0');
+assert(scene.marker.children.every(child=>child.geometry?.type!=='TorusGeometry'));
 const snapshot=JSON.stringify({state,mission:ui.mission});i18n.setLanguage('ja');ui.render();assert.equal(nodes.get('dispatchTitle').textContent,'格納庫へ接近');assert.equal(JSON.stringify({state,mission:ui.mission}),snapshot);i18n.setLanguage('en');
 ui.mission.done=true;ui.mission.index=4;ui.render();assert(!scene.marker.visible);assert.equal(nodes.get('dispatchTitle').textContent,'MISSION COMPLETE');assert.equal(nodes.get('retryDispatch').textContent,'REPLAY');
 ui.mission.leave();ui.render();assert(nodes.get('dispatchPanel').hidden);assert(!scene.marker.visible);

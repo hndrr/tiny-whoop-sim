@@ -35,3 +35,19 @@ mission.retry(state);assert.equal(mission.hold,0);assert(!state.crashed);
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');assert(main.includes('s.crashed=true}precision.mission.update(s,dt);drone.position'));
 assert(main.includes('onAreaChange:()=>precision.mission.leave()'));assert(main.includes('precision.mission.retry(s)'));
 console.log('PASS: four untimed dispatches, real geometry/clearance, forgiving hold, crash gating, per-objective retry, profile preservation, free-flight exit');
+// Every blocker is actionable and the evaluator exactly matches completion.
+const {objectiveFeedback}=await import('./dist/precision-missions.mjs');
+for(const objective of PRECISION_OBJECTIVES){
+ const base={x:objective.target[0],y:objective.target[1],z:objective.target[2],vx:0,vy:0,vz:0,paused:false,crashed:false};
+ const f=objectiveFeedback(base,objective);
+ for(const [patch,reason] of [[{crashed:true},'crashed'],[{paused:true},'paused'],[{x:base.x+f.radius+.01},'closer'],[{z:f.minAltitude-.001},'ascend'],[{z:f.maxAltitude+.001},'descend'],[{vx:f.horizontalLimit+.01},'brake'],[{vz:-(f.verticalLimit+.01)},'vertical'],[{},'hold']]){
+  const trial={...base,...patch},feedback=objectiveFeedback(trial,objective);
+  assert.equal(feedback.reason,reason);assert.equal(feedback.qualifies,reason==='hold');assert.equal(qualifiesForObjective(trial,objective),feedback.qualifies);
+ }
+ for(const patch of [{x:base.x+f.radius},{z:f.minAltitude},{z:f.maxAltitude},{vx:f.horizontalLimit},{vz:f.verticalLimit}])assert(objectiveFeedback({...base,...patch},objective).qualifies);
+}
+assert(main.includes('g.group.visible=!precision?.mission.active'));
+assert(main.includes('precision.mission.retry(s);keys.clear();clearSticks()'));
+assert(main.includes('precision.mission.start(s);keys.clear();clearSticks()'));
+assert(main.includes('precision.mission.leave();keys.clear();clearSticks()'));
+console.log('PASS: every live guidance blocker, inclusive boundaries, race-gate visibility and mission input cleanup wiring');
