@@ -24,7 +24,10 @@ Deploy `dist/` as static assets. Three.js 0.180.0 is vendored in `dist/vendor/`,
 - Left / Right or Q / E: yaw
 - C or camera button: FPV / chase
 - R: reset
+- Desktop: always-visible dual sticks show the actual combined keyboard / pointer input; faint key labels brighten while held. Drag either stick with the primary mouse button, optionally using keys for the other stick. One mouse controls one stick at a time.
 - Touch: proportional Mode 2 dual sticks; left = throttle/yaw, right = pitch/roll
+
+Releasing a drag recenters that stick; blur, tab hiding, reset, pause and setup clear all held inputs.
 
 Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding but preserves horizontal inertia; use opposite input to brake. Fly through all 18 gates in order. The FPV camera tilts 11.5 degrees upward and banks with the frame.
 
@@ -35,7 +38,9 @@ Release movement keys to level the drone. Stabilized ANGLE mode assists altitude
 - `dist/stage.mjs`: shared building geometry and swept collision volumes
 - `dist/main.mjs`: procedural Three.js scenery, ducted quadcopter, camera, post-process and UI integration
 - `dist/index.html`, `dist/style.css`: compact English radio-style OSD, keyboard and dual-stick touch UI
-- `test-flight.mjs`: simulation regression checks
+- `dist/controls.mjs`: shared normalized inputs and live radio feedback
+- `dist/vehicle-catalog.mjs`, `dist/flight-selector.mjs`, `dist/selection-integration.mjs`: actual airframe models and reversible rendered area/aircraft selection
+- `test-flight.mjs`, `test-controls.mjs`, `test-selection.mjs`: simulation, input lifecycle and preview regression checks
 - `serve.mjs`: dependency-free static development server
 
 ## Limitations
@@ -48,10 +53,18 @@ Two fly-through hangars with open loading bays and windows, interior roof beams 
 
 ## Island Range world
 
-The chart is 8,000 × 8,000 metres (terrain plus coastal water). Seven distributed regions: AIRFIELD, EAST HARBOR, RIDGE VIADUCT, HILL SETTLEMENT, NORTH QUARRY, LIGHTHOUSE POINT and WEST WIND RIDGE. Explore continuously or use SETUP → AREA → RELOCATE to start at a distant region. Race completion preserves the finish time and continues free flight.
+The chart is 8,000 × 8,000 metres (terrain plus coastal water). Seven distributed regions: AIRFIELD, EAST HARBOR, RIDGE VIADUCT, HILL SETTLEMENT, NORTH QUARRY, LIGHTHOUSE POINT and WEST WIND RIDGE. Explore continuously or use SETUP → CHOOSE AREA + AIRCRAFT → APPLY SELECTION to start at a distant region. Race completion preserves the finish time and continues free flight.
 
 Terrain uses 500 m chunks with 24-segment nearby and 6-segment distant meshes; landmarks and airfield details are distance-culled. Trees are instanced. Coarse-pointer devices use a 1.25 pixel-ratio ceiling and 1024 px shadow maps. These are implementation optimizations, not a measured iPhone frame-rate guarantee. Browser/iPhone visual and physical touch validation remains unavailable in the build environment.
 
 ## Offshore flight
 
-Island terrain remains 8 × 8 km; the traversable airspace now covers 24 × 24 km, including open ocean. Choose SETUP → AREA → OFFSHORE → RELOCATE, then ARM for a water-side launch between reference buoys. HOME gives airfield distance/bearing. ALT is clearance above terrain or mean sea level. Touching water ends the flight with DITCHED; there is no invisible elevated floor offshore. The outer airspace uses a soft return force, not an instant crash. Sea-level collision uses the mean surface, not each cosmetic wave.
+Island terrain remains 8 × 8 km; the traversable airspace now covers 24 × 24 km, including open ocean. Choose SETUP → CHOOSE AREA + AIRCRAFT → OFFSHORE → APPLY SELECTION, then ARM for a water-side launch between reference buoys. HOME gives airfield distance/bearing. ALT is clearance above terrain or mean sea level. Touching water ends the flight with DITCHED; there is no invisible elevated floor offshore. The outer airspace uses a soft return force, not an instant crash. Sea-level collision uses the mean surface, not each cosmetic wave.
+
+## Visual flight selection
+
+Open SETUP → CHOOSE AREA + AIRCRAFT for rendered previews of all eight real in-engine areas and a rotatable 3D airframe inspector. Three original aircraft presets (WHOOP 75, MICRO 65, SCOUT 85) change the actual chase-view model and FPV camera mount. They share the same stabilized flight physics.
+
+Apply commits the selection; Cancel/Escape discards pending changes. Changing only aircraft preserves position/progress; changing area starts a new paused flight. Reset preserves the chosen area/aircraft. Selection is remembered on this browser when local storage is available. Previews reuse the flight renderer and release temporary GPU targets; preview failures leave selection usable.
+
+Verification: Node physics, normalized controls, pointer lifecycle, airframe geometry, saved-selection recovery, reversible stage rendering and render-target cleanup checks pass. Real browser visual/input validation is still pending: the available cloud browser blocked localhost preview access, and standalone cloud Chromium could not open its process socket. No screenshots or physical-device frame-rate claims are included.
