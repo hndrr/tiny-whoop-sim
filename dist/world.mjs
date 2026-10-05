@@ -1,6 +1,7 @@
 export const WORLD_SIZE=8000;
 export const WORLD_HALF=WORLD_SIZE/2;
 export const SEA_LEVEL=-2.4;
+export const FLIGHT_HALF=12000;
 export const REGIONS=[
  {id:'airfield',label:'AIRFIELD',x:0,y:0,radius:190},
  {id:'harbor',label:'EAST HARBOR',x:1800,y:-120,radius:150},
@@ -8,7 +9,8 @@ export const REGIONS=[
  {id:'village',label:'HILL SETTLEMENT',x:650,y:1550,radius:180},
  {id:'quarry',label:'NORTH QUARRY',x:-450,y:2400,radius:200},
  {id:'lighthouse',label:'LIGHTHOUSE POINT',x:-1850,y:250,radius:90},
- {id:'windfarm',label:'WEST WIND RIDGE',x:-1550,y:1850,radius:170}
+ {id:'windfarm',label:'WEST WIND RIDGE',x:-1550,y:1850,radius:170},
+ {id:'offshore',label:'OFFSHORE',x:0,y:-1400,radius:100}
 ];
 const QUARRY_INDEX=REGIONS.findIndex(region=>region.id==='quarry');
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));const smooth=v=>{v=clamp(v,0,1);return v*v*(3-2*v)};
@@ -19,12 +21,12 @@ function naturalHeight(x,y){
  const erosion=30*Math.sin(x*.003+y*.001)*Math.cos(y*.004)+12*Math.sin(x*.009-y*.006);
  return -9+inland*(25+ridge+erosion);
 }
-export const REGION_ELEVATIONS=REGIONS.map(r=>r.id==='airfield'?0:r.id==='harbor'?2:r.id==='lighthouse'?3:Math.max(2,naturalHeight(r.x,r.y)));
-export function terrainHeight(x,y){let h=naturalHeight(x,y);for(let i=0;i<REGIONS.length;i++){const r=REGIONS[i],d=Math.hypot(x-r.x,y-r.y);if(d<r.radius+110)h=h+(REGION_ELEVATIONS[i]-h)*(1-smooth((d-r.radius)/110))}const q=REGIONS[QUARRY_INDEX];h-=32*(1-smooth(Math.hypot(x-q.x,y-q.y)/115));return h}
+export const REGION_ELEVATIONS=REGIONS.map(r=>r.id==='offshore'?SEA_LEVEL:r.id==='airfield'?0:r.id==='harbor'?2:r.id==='lighthouse'?3:Math.max(2,naturalHeight(r.x,r.y)));
+export function terrainHeight(x,y){let h=naturalHeight(x,y);for(let i=0;i<REGIONS.length;i++){const r=REGIONS[i];if(r.id==='offshore')continue;const d=Math.hypot(x-r.x,y-r.y);if(d<r.radius+110)h=h+(REGION_ELEVATIONS[i]-h)*(1-smooth((d-r.radius)/110))}const q=REGIONS[QUARRY_INDEX];h-=32*(1-smooth(Math.hypot(x-q.x,y-q.y)/115));return h}
 export function groundHeight(x,y){return Math.max(SEA_LEVEL,terrainHeight(x,y))}
 export function nearestRegion(x,y){let best=REGIONS[0],distance=Infinity;for(const r of REGIONS){const d=Math.hypot(x-r.x,y-r.y);if(d<distance){best=r;distance=d}}return {...best,distance}}
 // Gentle spring return near the outer chart edge, never a boundary-triggered crash.
-export function boundaryAcceleration(x,y){const onset=WORLD_HALF-300;return [Math.abs(x)>onset?-Math.sign(x)*(Math.abs(x)-onset)*.09:0,Math.abs(y)>onset?-Math.sign(y)*(Math.abs(y)-onset)*.09:0]}
+export function boundaryAcceleration(x,y){const onset=FLIGHT_HALF-300;return [Math.abs(x)>onset?-Math.sign(x)*(Math.abs(x)-onset)*.09:0,Math.abs(y)>onset?-Math.sign(y)*(Math.abs(y)-onset)*.09:0]}
 export const WORLD_OBJECTS=[];
 const add=(region,position,size,material,shape='box')=>{const r=REGIONS[region];WORLD_OBJECTS.push({region,position:[position[0]+r.x,position[1]+r.y,position[2]+REGION_ELEVATIONS[region]],size,material,shape})};
 // Harbor: piers, warehouses, containers and three gantry cranes.
@@ -43,7 +45,12 @@ add(5,[0,0,20],[7,7,40],'wall','cylinder');add(5,[0,0,41],[10,10,3],'glass','cyl
 // Turbine ridge: slender towers spread across the hillside.
 for(const [x,y] of [[-90,-60],[0,0],[95,60]]){add(6,[x,y,35],[3,3,70],'wall','cylinder');add(6,[x,y,71],[5,9,4],'roof');}
 
-export function regionSpawn(index){const r=REGIONS[index];if(!r)throw Error('Unknown area');const offsets=[[0,0],[-100,-90],[0,-55],[0,-85],[0,0],[35,-25],[0,-75]],o=offsets[index],x=r.x+o[0],y=r.y+o[1];return [x,y,groundHeight(x,y)+7]}
+export function regionSpawn(index){const r=REGIONS[index];if(!r)throw Error('Unknown area');const offsets=[[0,0],[-100,-90],[0,-55],[0,-85],[0,0],[35,-25],[0,-75],[0,0]],o=offsets[index],x=r.x+o[0],y=r.y+o[1];return [x,y,groundHeight(x,y)+7]}
+
+export function isOverWater(x,y){return terrainHeight(x,y)<SEA_LEVEL}
+export function homeNavigation(x,y){const distance=Math.hypot(x,y),bearing=((Math.atan2(-x,-y)*180/Math.PI)%360+360)%360;return {distance,bearing}}
+// Offshore reference buoys mark the launch area without adding fake land.
+for(const [x,y] of [[-25,-20],[25,-20],[0,40]]){add(7,[x,y,.35],[2.2,2.2,.7],'yellow','cylinder');add(7,[x,y,1.6],[.28,.28,2.5],'steel','cylinder');add(7,[x,y,2.9],[.7,.7,.2],'container','cylinder')}
 
 export function surfaceClearance(x,y,z){return Math.max(0,z-groundHeight(x,y))}
 export function lowAltitudeWarning(state){return !state.paused&&!state.crashed&&surfaceClearance(state.x,state.y,state.z)<.35}
