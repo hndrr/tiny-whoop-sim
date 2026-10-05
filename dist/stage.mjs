@@ -1,3 +1,4 @@
+import {WORLD_OBJECTS} from './world.mjs';
 // Geometry and collision share one source of truth. Units are metres.
 export const SOLIDS=[];
 const solid=(position,size,material)=>SOLIDS.push({position,size,material});
@@ -20,6 +21,7 @@ for(const x of [28,36])solid([x,76,2.5],[.28,24,5],'wall');solid([32,76,5.1],[8.
 for(const [x,y] of [[64,25],[64,48],[84,42],[92,10]]){solid([x,y,1.3],[7,3,2.6],'container');solid([x,y,2.63],[7.1,3.1,.08],'roof')}
 // Control tower and low pier barriers are physical obstacles too.
 solid([-79,106,5],[7,7,10],'wall');solid([-79,106,11],[10,10,2.2],'glass');solid([-79,106,12.3],[10.7,10.7,.25],'roof');
+const COLLISION_SOLIDS=[...SOLIDS,...WORLD_OBJECTS];
 export function segmentHitsSolid(a,b,padding=.05){
- for(const o of SOLIDS){let enter=0,exit=1;for(let axis=0;axis<3;axis++){const min=o.position[axis]-o.size[axis]/2-padding,max=o.position[axis]+o.size[axis]/2+padding,d=b[axis]-a[axis];if(Math.abs(d)<1e-9){if(a[axis]<min||a[axis]>max){enter=2;break}}else{let u=(min-a[axis])/d,v=(max-a[axis])/d;if(u>v)[u,v]=[v,u];enter=Math.max(enter,u);exit=Math.min(exit,v);if(enter>exit)break}}if(enter<=exit&&enter<=1&&exit>=0)return true}return false;
+ for(const o of COLLISION_SOLIDS){let enter=0,exit=1;for(let axis=0;axis<3;axis++){const min=o.position[axis]-o.size[axis]/2-padding,max=o.position[axis]+o.size[axis]/2+padding,d=b[axis]-a[axis];if(Math.abs(d)<1e-9){if(a[axis]<min||a[axis]>max){enter=2;break}}else{let u=(min-a[axis])/d,v=(max-a[axis])/d;if(u>v)[u,v]=[v,u];enter=Math.max(enter,u);exit=Math.min(exit,v);if(enter>exit)break}}if(enter<=exit&&enter<=1&&exit>=0)return true}return false;
 }

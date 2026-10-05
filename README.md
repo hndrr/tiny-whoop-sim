@@ -31,6 +31,7 @@ Release movement keys to level the drone. Stabilized ANGLE mode assists altitude
 ## Architecture
 
 - `dist/flight.mjs`: deterministic lightweight drone motion and race state
+- `dist/world.mjs`: 8 km world terrain, seven distributed regions, landmark solids and safe exploration spawns
 - `dist/stage.mjs`: shared building geometry and swept collision volumes
 - `dist/main.mjs`: procedural Three.js scenery, ducted quadcopter, camera, post-process and UI integration
 - `dist/index.html`, `dist/style.css`: compact English radio-style OSD, keyboard and dual-stick touch UI
@@ -39,8 +40,14 @@ Release movement keys to level the drone. Stabilized ANGLE mode assists altitude
 
 ## Limitations
 
-Arcade physics, not a flight-training or hardware-control tool. Stabilized flight rather than full acro/rate mode. Video is clearly marked VTX SIM; no fabricated live battery or radio-link readings. Ground, the 750 m radius field boundary, and all major building surfaces/cargo use collision checks. Open hangar doors, windows and the service tunnel are traversable; scenery rocks and grass do not have mesh-accurate collision. No multiplayer, gamepad mapping, real radio connection, or persistent leaderboard. WebGL2-capable modern browser required.
+Arcade physics, not a flight-training or hardware-control tool. Stabilized flight rather than full acro/rate mode. Video is clearly marked VTX SIM; no fabricated live battery or radio-link readings. Ground, and all major building surfaces/cargo use collision checks. The outer map edge applies a gentle restoring force instead of crashing the drone. Open hangar doors, windows and the service tunnel are traversable; scenery rocks and grass do not have mesh-accurate collision. No multiplayer, gamepad mapping, real radio connection, or persistent leaderboard. WebGL2-capable modern browser required.
 
 ## Coastal 02 stage
 
 Two fly-through hangars with open loading bays and windows, interior roof beams and cargo, a service tunnel, expanded apron and cargo alleys. Left touch stick down reduces thrust and descends; release returns to altitude-assisted hover.
+
+## Island Range world
+
+The chart is 8,000 × 8,000 metres (terrain plus coastal water). Seven distributed regions: AIRFIELD, EAST HARBOR, RIDGE VIADUCT, HILL SETTLEMENT, NORTH QUARRY, LIGHTHOUSE POINT and WEST WIND RIDGE. Explore continuously or use SETUP → AREA → RELOCATE to start at a distant region. Race completion preserves the finish time and continues free flight.
+
+Terrain uses 500 m chunks with 24-segment nearby and 6-segment distant meshes; landmarks and airfield details are distance-culled. Trees are instanced. Coarse-pointer devices use a 1.25 pixel-ratio ceiling and 1024 px shadow maps. These are implementation optimizations, not a measured iPhone frame-rate guarantee. Browser/iPhone visual and physical touch validation remains unavailable in the build environment.
