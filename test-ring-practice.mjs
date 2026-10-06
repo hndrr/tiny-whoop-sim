@@ -51,3 +51,23 @@ assert(html.includes('<p id="distance" role="status"></p>'),'pass feedback is em
 assert(!/RING PRACTICE|ANY ORDER|EITHER WAY|optional practice/.test(html));
 assert(readFileSync(new URL('./dist/style.css',import.meta.url),'utf8').includes('#distance:empty{display:none}'),'idle feedback leaves no empty line');
 console.log('PASS: neutral bilingual ring counter, no persistent practice instructions, temporary accessible pass feedback and reset');
+
+// A live region must not receive redundant text writes on animation frames.
+let statusText='',statusWrites=0;
+const statusNode={get textContent(){return statusText},set textContent(value){statusWrites++;statusText=value}};
+const statusRoot={getElementById(id){return id==='distance'?statusNode:null}};
+const feedback=new FlightState();
+const renderFrames=()=>{for(let frame=0;frame<120;frame++)localizeFlight(feedback,true,statusRoot,true)};
+for(const lang of ['en','ja']){
+ i18n.setLanguage(lang);
+ let before=statusWrites;renderFrames();assert.equal(statusWrites,before,'idle frames do not mutate the empty status');
+ feedback.ringFlash[0]=1.2;renderFrames();assert.equal(statusText,i18n.t('ringPassed'));assert.equal(statusWrites,before+1,'a pass writes its label exactly once');
+ before=statusWrites;feedback.ringFlash[0]=.5;feedback.ringFlash[1]=1.2;renderFrames();assert.equal(statusWrites,before,'ongoing and overlapping flashes retain the same status without writes');
+ const other=lang==='en'?'ja':'en';i18n.setLanguage(other);renderFrames();assert.equal(statusText,i18n.t('ringPassed'));assert.equal(statusWrites,before+1,'a language change updates active feedback once');
+ before=statusWrites;feedback.ringFlash.fill(0);renderFrames();assert.equal(statusText,'');assert.equal(statusWrites,before+1,'flash expiry clears feedback exactly once');
+ before=statusWrites;i18n.setLanguage(lang);renderFrames();assert.equal(statusWrites,before,'a language change while idle keeps feedback empty');
+ feedback.ringFlash[0]=1.2;renderFrames();assert.equal(statusText,i18n.t('ringPassed'));assert.equal(statusWrites,before+1,'a later pass restores its localized label');
+ before=statusWrites;feedback.reset();renderFrames();assert.equal(statusText,'');assert.equal(statusWrites,before+1,'reset clears active feedback exactly once');
+}
+i18n.setLanguage('en');
+console.log('PASS: live-region writes occur only on pass, clear, reset or active locale changes, never unchanged frames');

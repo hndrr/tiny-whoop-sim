@@ -3,7 +3,7 @@ import {FLIGHT_HALF,REGIONS,nearestRegion,isOverWater,lowAltitudeWarning} from '
 // Presentation only: no pause, input, camera, mission, selection or flight mutations.
 // Call after base telemetry and before the precision mission's own HUD overrides.
 export function localizeFlight(state,fpv,root=globalThis.document,started=false){
- const set=(id,text)=>{const node=root.getElementById(id);if(node)node.textContent=text};
+ const set=(id,text)=>{const node=root.getElementById(id);if(node&&node.textContent!==text)node.textContent=text};
  set('title',i18n.t(state.crashed?(state.ditched?'ditched':'crashed'):state.explore?'exploration':'disarmed'));
  set('eyebrow',state.crashed?i18n.t('flightTerminated'):state.explore?i18n.t('freeFlightArea'):'ANGLE / COASTAL 02');
  set('subtitle',state.crashed?i18n.t('resetToRearm'):state.explore?i18n.t(`region.${REGIONS[state.region].id}`):state.elapsed>0?i18n.t('flightPaused'):i18n.t('modeFree'));
