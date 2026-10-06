@@ -16,11 +16,11 @@ const noiseStrength=Number(post.match(/-.5\)\*([.\d]+)\*fpv;/)[1]);
 const scanStrength=Number(post.match(/col\*=1\.\+([.\d]+)\*fpv\*sin/)[1]);
 function signal(value,fpv,grain,phase){return (value+(grain-.5)*noiseStrength*fpv)*(1+scanStrength*fpv*Math.sin(phase))}
 for(const value of [.05,.2,.5,.85]){
- assert.equal(signal(value,0,0,Math.PI/2),value,'chase stays clean');
+ assert.equal(signal(value,0,0,Math.PI/2),value,'FPV-only contribution is disabled in chase');
  const samples=[];for(const grain of [.1,.9])for(const phase of [0,Math.PI/2,Math.PI,3*Math.PI/2])samples.push(signal(value,1,grain,phase));
  assert(Math.abs(samples.reduce((s,v)=>s+v,0)/samples.length-value)<1e-12,'balanced signal modulation does not darken mean terrain');
 }
 assert(noiseStrength*.5*255>8&&noiseStrength*.5*255<9);
 assert.equal(scanStrength,.03);
-console.log('PASS: stronger FPV-only chroma/softening/grain/scanlines, unchanged lens/vignette/576px target, one display transfer, zero-mean scan/noise, clean chase and retained brightness');
+console.log('PASS: stronger FPV-only chroma/softening/grain/scanlines, unchanged lens/vignette/576px target, one display transfer, zero-mean FPV scan/noise and retained brightness');
 console.log('Signal arithmetic/guards only; actual analog feel and rendered visibility require private-device feedback');
