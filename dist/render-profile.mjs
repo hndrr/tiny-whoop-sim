@@ -1,0 +1,5 @@
+// Opt-in diagnostics only; no UI, timers, telemetry, or persistent data.
+export function createRenderProfile(limit=300){
+ const samples=[];let cursor=0;
+ return {record({frameMs,renderSubmitMs,sceneCalls,postCalls,triangles,textures,geometries}){if(!Number.isFinite(frameMs)||frameMs<=0)return;const sample={frameMs,renderSubmitMs,sceneCalls,postCalls,triangles,textures,geometries};if(samples.length<limit)samples.push(sample);else{samples[cursor]=sample;cursor=(cursor+1)%limit}},snapshot(){if(!samples.length)return {samples:0};const ordered=samples.map(s=>s.frameMs).sort((a,b)=>a-b),percentile=p=>ordered[Math.min(ordered.length-1,Math.floor((ordered.length-1)*p))],latest=samples.length<limit?samples.at(-1):samples[(cursor+limit-1)%limit];return {samples:samples.length,frameMsP50:percentile(.5),frameMsP95:percentile(.95),stallsOver250Ms:samples.filter(s=>s.frameMs>250).length,latest:{...latest},note:'RAF intervals and CPU render submission, not GPU timing or a device FPS guarantee'}},reset(){samples.length=0;cursor=0}};
+}
