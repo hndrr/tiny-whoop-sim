@@ -1,3 +1,4 @@
+import {createChaseCamera} from './dist/chase-camera.mjs';
 import {finishObjective} from './test-mission-path-helper.mjs';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
@@ -148,7 +149,7 @@ try {
   sourceBetween('precision=setupPrecision({','const osd=')+
   main.slice(main.indexOf('const language=document.createElement'))+
   ';({startPrecision,leavePrecision,reset,toggle,help,get selection(){return flightSelection},get precision(){return precision},get mission(){return precision.mission},get flightStarted(){return flightStarted}})',
-  {document,$,s:state,keys,axes,setupFlightSelection,setupPrecision,
+  {document,$,s:state,keys,axes,setupFlightSelection,setupPrecision,chaseCamera:createChaseCamera(),
    clearSticks(){stickClears++;for(const key of Object.keys(axes))axes[key]=0},updateHUD(){hudUpdates++;controller?.precision.render(controller.flightStarted)},
    setVehicle(id){disposeVehicle(drone);drone=createVehicle(id).group;meshChanges++},addEventListener:windowEvents.addEventListener.bind(windowEvents),sticks:{render(){}},switchCamera(){cameraChanges++},
    renderer,scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,get drone(){return drone},i18n}

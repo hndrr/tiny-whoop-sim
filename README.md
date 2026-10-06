@@ -28,7 +28,7 @@ Deploy `dist/` as static assets. Three.js 0.180.0 is vendored in `dist/vendor/`,
 
 Releasing a drag recenters that stick; blur, tab hiding, reset, pause and setup clear all held inputs.
 
-Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding but preserves horizontal inertia; use opposite input to brake. Practice through any of the 18 rings in any order, from either direction. Each pass flashes mint and adds one practice count; there is no race timer or finish requirement. The FPV camera tilts 11.5 degrees upward and banks with the frame.
+Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding; releasing the right stick self-levels and brakes drift, while opposing input brakes before reversing. Strong stick input sustains acceleration longer. Practice through any of the 18 rings in any order, from either direction. Each pass flashes mint and adds one practice count; there is no race timer or finish requirement. The FPV camera tilts 11.5 degrees upward and banks with the frame.
 
 ## Architecture
 
@@ -62,7 +62,7 @@ Island terrain remains 8 × 8 km; the traversable airspace now covers 24 × 24 k
 
 ## Visual flight selection
 
-Open SETUP for rendered previews of all eight real in-engine areas and a rotatable 3D airframe inspector. Five original aircraft (WHOOP 75, MICRO 65, SCOUT 85, RACER 90, CINE 95) have actual chase-view geometry, FPV camera mounts and distinct restrained handling. WHOOP 75 retains the original horizontal baseline. MICRO 65 turns quickly at a lower top speed; SCOUT 85 cruises faster with smoother turns; RACER 90 has the strongest acceleration tuning and highest speed; CINE 95 eases into turns and acceleration. The inspector shows relative horizontal acceleration, turn response and top-speed ratings (WHOOP 75 = 100). These are arcade tuning, not real-world hardware specifications.
+Open SETUP for rendered previews of all eight real in-engine areas and a rotatable 3D airframe inspector. Five original aircraft (WHOOP 75, MICRO 65, SCOUT 85, RACER 90, CINE 95) have actual chase-view geometry, FPV camera mounts and distinct restrained handling. WHOOP 75 remains the relative tuning baseline (100); all five aircraft use progressive high-input acceleration. MICRO 65 turns quickly at a lower top speed; SCOUT 85 cruises faster with smoother turns; RACER 90 has the strongest acceleration tuning and highest speed; CINE 95 eases into turns and acceleration. The inspector shows relative horizontal acceleration, turn response and top-speed ratings (WHOOP 75 = 100). These are arcade tuning, not real-world hardware specifications.
 
 Start commits mode, area and aircraft and begins flight; Cancel/Escape discards pending changes. Changing only aircraft preserves position/progress; changing area starts a new flight. Reset preserves the chosen area/aircraft. Selection is remembered on this browser when local storage is available. Previews reuse the flight renderer and release temporary GPU targets; preview failures leave selection usable.
 
@@ -70,7 +70,7 @@ Verification: Node physics, normalized controls, pointer lifecycle, airframe geo
 
 ## Video brightness
 
-The always-visible BRIGHTNESS slider adjusts the 3D flight video in both FPV and chase views from 60% to 180%, without changing HTML telemetry or control brightness. 100% preserves the original look; the adjacent reset button restores it. The value is validated and remembered locally when browser storage is available. Setup thumbnails keep their original scene exposure.
+The always-visible BRIGHTNESS slider adjusts the 3D flight video in both FPV and chase views from 60% to 180%, without changing HTML telemetry or control brightness. 100% is the default feed gain; the adjacent reset button restores it. The value is validated and remembered locally when browser storage is available. Setup thumbnails keep their original scene exposure.
 
 ## Handling and controlled descent
 
@@ -128,3 +128,51 @@ Verification uses real setup/HUD callbacks in a dependency-free Node DOM contrac
 All five actual aircraft previews spin their four propellers and turn horizontally once every 20 seconds. Dragging pauses the turntable; it resumes from the chosen view after a 1.2-second grace period. Buttons and arrow keys also give inspection time; manual elevation is preserved. A subdued rendered gradient and soft floor/contact shading replace the flat background. Reduced-motion preferences disable automatic movement while preserving manual controls.
 
 The inspector reuses the flight renderer, one render target, readback buffer and 2D image while open, with at most 30 preview copies per second. It cancels animation when the tab is hidden or the panel closes, discards elapsed hidden time, clamps long frame gaps, and releases the target/model/backdrop on close. Preview models are separate from flight models. Deterministic tests cover all five models, exact turn duration/local prop axes, drag/resume, model switches, reduced motion, repeated reopen and target cleanup. Full tests and build pass; cloud WebGL restrictions still prevent visual validation.
+
+## Lightweight surface pass
+
+Airfield asphalt retains original procedural detail; concrete, hangar roofing, foliage and bark use four original generated 256px painted albedos (62,768 bytes total). Metre-scaled architectural UVs, continuous forest UVs and shared geometry keep the pass bounded. Roof/steel/glass share one small static analytic-sky reflection with a safe unsupported-device fallback. No stock/game assets or new dependencies are used. See [painted-art provenance, tiling and budgets](docs/painted-art.md). Flight mechanics and brightness controls remain unchanged. The default flight feed now performs its required sRGB display conversion; natural ground uses neutral detail to avoid compounded dark tints. See [surface authorship, memory budget and validation plan](docs/visual-surfaces.md). The opt-in `?profile=1` diagnostic has no on-screen UI; `?colorPipeline=1` is a separately gated, unverified HDR/ACES experiment. Real-device WebGL/touch/FPS verification remains pending.
+
+## Authored forest silhouettes
+
+The existing 700 tree positions and seeded placement are preserved. Three muted, original low-poly crown families replace the repeated single cones: overlapping broadleaf masses and layered conifers, with per-instance tint and rotation. Vertex shading is authored geometry color, not a photographic foliage texture. Trunks meet the ground and extend into the crown; trees remain non-colliding decoration.
+
+Near/far opaque instanced geometry shares the same vertical crown profile, with a 650 m threshold and 65 m hysteresis. Updates occur after at least 12 m of camera movement; no billboard rotation, alpha foliage, texture downloads or extra shadow-casting passes. Maximum 12 draw batches (versus 2 before), 146 triangles per tree (versus 32 before), and about 255 KB of geometry/instance buffers. These are structural upper bounds, not measured phone GPU timings. CPU geometry, random-stream parity and LOD tests pass; actual WebGL appearance and phone performance still need device validation.
+
+## Progressive horizontal acceleration
+
+Strong right-stick input sustains real acceleration longer, while gentle inputs preserve precise mission control. Release and opposite input provide self-level braking; diagonal input has the same circular envelope across keyboard/mouse/touch and a shared horizontal speed bound. See [trajectory measurements and verification](docs/acceleration-verification.md). These are deterministic simulation results, not hands-on/device feel validation.
+
+## Faceted mountain scenery
+
+Existing ridges use face-based lighting and coherent distant colors with a continuous earth palette. Physical heights, region plateaus, terrain stitching, sky/fog and FPV effects remain unchanged. See [geometry checks, memory cost and unverified device limits](docs/faceted-terrain.md). No new mountain backdrop, triangle count or draw call is added; GPU work and geometry storage can increase.
+
+## High-altitude travel
+
+Holding a strong directional input in clear high air now exaggerates actual world travel up to 20× normal flight, with continuous stick response, bounded acceleration take-up and scaled braking. The speed display deliberately follows an independent nominal drone model; it does not show the exaggerated world velocity. Collisions, missions and navigation use actual motion. Low flight keeps its precise handling, and release/descent/turning exits travel assistance. No extra key is needed. See [virtual telemetry, measured trip times, braking and verification limits](docs/high-altitude-cruise.md).
+
+### Loose chase-camera motion
+
+CHASE keeps its 72° FOV and 0.8 m rear / 0.4 m upper rest offset. Its boom turns more slowly (2.1/s), while its look target follows the aircraft's current heading independently. Turns can therefore reveal the airframe's side and move it across the screen. The camera stays world-up and does not copy aircraft pitch/roll, leaving bank visible. A smoothed translation trail adds a little give on acceleration and braking, capped at 0.22 m in every direction. Distance and optical scale can vary modestly; they cannot keep growing with world-travel speed. Aircraft geometry and FPV transforms/post-processing are unchanged.
+
+Camera switches, flight resets, mission retries/replays and area changes clear the old chase motion. Direct large teleports also snap to the new pose; the discontinuity threshold accounts for actual world speed so 20× travel is not mistaken for teleportation.
+
+`test-chase-camera.mjs` checks Three.js CPU projection/transform bounds at 20/30/60/144 Hz, portrait/landscape aspects, and 0–450 m/s. It requires visible turn separation and lateral screen movement, preserved projected bank, banked-airframe bounds inside the portrait frame, limited follow distance, smooth braking recovery, yaw wrap/reversal, reset/relocation, repeated actual FPV/CHASE callbacks and all five aircraft's real flight dynamics. These numerical visibility proxies are not a rendered-pixel or play-feel approval; actual cloud WebGL/device smoothness and the revised camera feel remain unverified.
+
+## Subtle analog chase feed
+
+CHASE now uses the existing full-resolution video pass for a lighter relative of the FPV signal: two horizontal taps 0.65 CSS pixels away, a 12% softening blend and a 14% red/blue blend (0.091 CSS pixel effective color offset). Fine grain is ±1.53 display codes at 100% brightness; stationary four-CSS-pixel scanlines modulate ±0.6%. There is no chase lens warp, dark vignette, extra downsampling, additional render target, texture asset or fullscreen pass. The extra two chase texture lookups have not been timed on a phone. FPV keeps its exact earlier signal and 576-pixel feed-height cap; HTML telemetry and controls remain outside the post-process.
+
+Reduced-motion preference freezes the new chase grain, including preference changes during flight. Constant-color spatial mixing has unit gain; balanced noise/scanline samples retain their mean before clipping, with a worst-case signal change of 3.07/255 at default brightness. This is a numeric bound, not a rendered-scene brightness guarantee. The existing sRGB8 storage, single display transfer, optional HDR/ACES route, terrain/material colors and brightness slider are unchanged.
+
+`test-chase-signal.mjs` covers actual compositor construction and mode uniforms, repeated camera switches, portrait/landscape resizes, flight/mission resets, brightness retention, live reduced-motion changes, exact baseline FPV shader hashes in SDR/HDR, and bounded signal arithmetic. The full test suite and build also run; GPU shader compilation, actual visual feel and mobile frame rate still require device validation.
+
+## Ground-layer stability
+
+The ground-flicker investigation found actual overlapping render surfaces: six village floors almost coincided with terrain, three airfield floors were buried 2 cm below it, and six crane/quarry supports ended exactly on their covering top faces. Conventional depth storage also lost centimetre separation in aerial views with the existing 0.025–20,000 m camera range. These source/CPU findings match plausible flicker mechanisms; the reported device symptom has not been reproduced in this environment.
+
+Rendering now places only flush/buried flat paving 6 mm above terrain and indoor floors 18 mm above terrain; the separate layers also prevent the access strip and hangar floor from competing. Six fully covered support meshes stop 2 cm below the visible cap. World/collision records, rendered footprints and support bases stay unchanged. Corrected ground slabs render only their exposed top, avoiding a new vertical lip coplanar with tunnel portal ends. Their footprint and metre-scaled UVs are preserved. The correction is deliberately render-only and adds no meshes or draw calls.
+
+The renderer uses logarithmic depth without changing near clipping, FOV, draw distance, color storage or the analog feed. World sky/ocean shaders and the aircraft inspector's contact shadow use the same depth chunks as standard Three.js materials; the depth-disabled inspector backdrop and fullscreen compositor stay unchanged. Orthographic shadow-map depth retains its ordinary mapping. This adds fragment-depth work and can reduce early-depth optimizations on some GPUs; phone performance is unmeasured. No new render target, multisampling allocation or full-screen pass is added.
+
+`test-render-surfaces.mjs` checks all nine corrected floors against both real terrain LODs (162 raycasts), paving/floor priority, the six covered supports, immutable collision records, shader-chunk wiring and float32/24-bit depth arithmetic. Representative aerial layers that tied under the old mapping separate by at least 23 stored depth codes in that numeric model. Existing FPV/chase signal, color/brightness, preview lifecycle, terrain and flight tests remain in the full suite. Actual driver shader compilation, rendered appearance and mobile frame rate still require device verification. Geometry-edge shimmer, distant LOD changes and moving shadow edges are separate possible artifacts; this patch does not claim to eliminate every temporal artifact.

@@ -1,0 +1,87 @@
+{
+  "generator": "OpenAI built-in image_gen.imagegen",
+  "generatedAt": "2026-10-06",
+  "originalDimensions": [
+    1254,
+    1254
+  ],
+  "sourceSha256": "cb861d6f022a02756c2c50683e34a097b10573bb5c3f20085fcff3ffe7944f4e",
+  "provenance": "Original generated artwork prompted for this project; no third-party reference images or downloaded stock/game assets. No separate third-party asset license. No claim of exclusive copyright.",
+  "processing": "Four exact quadrant crops, Lanczos resize to 256x256, WebP quality 86. No semantic repaint, no generated normals or PBR-map claims.",
+  "files": [
+    {
+      "file": "painted-concrete-256.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 16852,
+      "sha256": "2e7cad0a7b694bf11f4ace43ce6670a86764475f51c82eeb1076a8b31a3081e6",
+      "wrap": "MirroredRepeatWrapping",
+      "mirroredBoundaryMaxChannelDifference": 0,
+      "ordinaryRepeatMeanEdgeDifference": [
+        9.14,
+        10.62
+      ],
+      "meanRGB": [
+        143.2,
+        126.8,
+        104.05
+      ]
+    },
+    {
+      "file": "painted-hangar-256.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 9412,
+      "sha256": "bc1c87ce7c892be3f5a3bdfa8709ef404ecd0c1f73dda422891eb413eb622a07",
+      "wrap": "MirroredRepeatWrapping",
+      "mirroredBoundaryMaxChannelDifference": 0,
+      "ordinaryRepeatMeanEdgeDifference": [
+        6.78,
+        6.37
+      ],
+      "meanRGB": [
+        97.73,
+        103.02,
+        104.77
+      ]
+    },
+    {
+      "file": "painted-foliage-256.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 16310,
+      "sha256": "9ef244e1f3f204ecfe06452ebf0d1edc23059813d9a1d060217928834053fe20",
+      "wrap": "MirroredRepeatWrapping",
+      "mirroredBoundaryMaxChannelDifference": 0,
+      "ordinaryRepeatMeanEdgeDifference": [
+        13.2,
+        11.31
+      ],
+      "meanRGB": [
+        74.83,
+        79.59,
+        39.8
+      ]
+    },
+    {
+      "file": "painted-bark-256.webp",
+      "width": 256,
+      "height": 256,
+      "bytes": 20194,
+      "sha256": "a05d4c2703716dbab9ad4fc5d2feee891e7799757a346212d41bd701be0ebb0a",
+      "wrap": "MirroredRepeatWrapping",
+      "mirroredBoundaryMaxChannelDifference": 0,
+      "ordinaryRepeatMeanEdgeDifference": [
+        13.1,
+        12.39
+      ],
+      "meanRGB": [
+        99.15,
+        81.76,
+        58.02
+      ]
+    }
+  ],
+  "totalRuntimeBytes": 62768,
+  "estimatedRGBA8GPUWithMipsBytes": 1398096
+}
