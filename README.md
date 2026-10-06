@@ -150,3 +150,9 @@ Existing ridges use face-based lighting and coherent distant colors with a conti
 ## High-altitude travel
 
 Holding a strong directional input in clear high air smoothly builds up to 3× actual horizontal speed (WHOOP 75: up to 48 m/s), shortening long inter-region trips. The blend uses clearance above terrain/sea and structures, with look-ahead checks; low flight retains its precise handling. Releasing the stick, descending or braking exits the assistance while speed decays continuously. There is no extra key or camera/FOV trick. See [travel timings, braking distances and verification limits](docs/high-altitude-cruise.md).
+
+### Stable chase-camera framing
+
+CHASE keeps its existing 72° FOV, 0.8 m rear / 0.4 m upper offset and forward-looking composition. Aircraft translation is followed directly; only boom heading is eased at 7/s. The old world-position easing added a speed-dependent following gap, so forward flight made the aircraft appear smaller. The new fixed 0.8944 m radius keeps optical scale constant through ordinary and boosted cruise, lateral/reverse motion and turns. Aircraft geometry and the FPV camera/post-process are unchanged. Camera switches, flight resets, mission retries/replays and area changes discard the old chase orientation; direct large teleports also snap to the new pose.
+
+`test-chase-camera.mjs` checks Three.js CPU projection/transform invariants at 20/30/60/144 Hz, portrait/landscape aspects, 0–80 m/s, yaw wrap/reversal, braking, reset/relocation, repeated actual FPV/CHASE callbacks and all five aircraft's real flight dynamics. Fixed-target angular easing is frame-rate-independent; moving-target yaw lag differs by less than 2.3° between 20 and 144 Hz. These are numeric tests, not rendered-pixel, phone performance or visual smoothness validation; cloud WebGL flight QA remains unavailable.
