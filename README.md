@@ -28,7 +28,7 @@ Deploy `dist/` as static assets. Three.js 0.180.0 is vendored in `dist/vendor/`,
 
 Releasing a drag recenters that stick; blur, tab hiding, reset, pause and setup clear all held inputs.
 
-Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding but preserves horizontal inertia; use opposite input to brake. Practice through any of the 18 rings in any order, from either direction. Each pass flashes mint and adds one practice count; there is no race timer or finish requirement. The FPV camera tilts 11.5 degrees upward and banks with the frame.
+Release movement keys to level the drone. Stabilized ANGLE mode assists altitude holding; releasing the right stick self-levels and brakes drift, while opposing input brakes before reversing. Strong stick input sustains acceleration longer. Practice through any of the 18 rings in any order, from either direction. Each pass flashes mint and adds one practice count; there is no race timer or finish requirement. The FPV camera tilts 11.5 degrees upward and banks with the frame.
 
 ## Architecture
 
@@ -62,7 +62,7 @@ Island terrain remains 8 × 8 km; the traversable airspace now covers 24 × 24 k
 
 ## Visual flight selection
 
-Open SETUP for rendered previews of all eight real in-engine areas and a rotatable 3D airframe inspector. Five original aircraft (WHOOP 75, MICRO 65, SCOUT 85, RACER 90, CINE 95) have actual chase-view geometry, FPV camera mounts and distinct restrained handling. WHOOP 75 retains the original horizontal baseline. MICRO 65 turns quickly at a lower top speed; SCOUT 85 cruises faster with smoother turns; RACER 90 has the strongest acceleration tuning and highest speed; CINE 95 eases into turns and acceleration. The inspector shows relative horizontal acceleration, turn response and top-speed ratings (WHOOP 75 = 100). These are arcade tuning, not real-world hardware specifications.
+Open SETUP for rendered previews of all eight real in-engine areas and a rotatable 3D airframe inspector. Five original aircraft (WHOOP 75, MICRO 65, SCOUT 85, RACER 90, CINE 95) have actual chase-view geometry, FPV camera mounts and distinct restrained handling. WHOOP 75 remains the relative tuning baseline (100); all five aircraft use progressive high-input acceleration. MICRO 65 turns quickly at a lower top speed; SCOUT 85 cruises faster with smoother turns; RACER 90 has the strongest acceleration tuning and highest speed; CINE 95 eases into turns and acceleration. The inspector shows relative horizontal acceleration, turn response and top-speed ratings (WHOOP 75 = 100). These are arcade tuning, not real-world hardware specifications.
 
 Start commits mode, area and aircraft and begins flight; Cancel/Escape discards pending changes. Changing only aircraft preserves position/progress; changing area starts a new flight. Reset preserves the chosen area/aircraft. Selection is remembered on this browser when local storage is available. Previews reuse the flight renderer and release temporary GPU targets; preview failures leave selection usable.
 
@@ -138,3 +138,7 @@ Airfield asphalt retains original procedural detail; concrete, hangar roofing, f
 The existing 700 tree positions and seeded placement are preserved. Three muted, original low-poly crown families replace the repeated single cones: overlapping broadleaf masses and layered conifers, with per-instance tint and rotation. Vertex shading is authored geometry color, not a photographic foliage texture. Trunks meet the ground and extend into the crown; trees remain non-colliding decoration.
 
 Near/far opaque instanced geometry shares the same vertical crown profile, with a 650 m threshold and 65 m hysteresis. Updates occur after at least 12 m of camera movement; no billboard rotation, alpha foliage, texture downloads or extra shadow-casting passes. Maximum 12 draw batches (versus 2 before), 146 triangles per tree (versus 32 before), and about 255 KB of geometry/instance buffers. These are structural upper bounds, not measured phone GPU timings. CPU geometry, random-stream parity and LOD tests pass; actual WebGL appearance and phone performance still need device validation.
+
+## Progressive horizontal acceleration
+
+Strong right-stick input sustains real acceleration longer, while gentle inputs preserve precise mission control. Release and opposite input provide self-level braking; diagonal input has the same circular envelope across keyboard/mouse/touch and a shared horizontal speed bound. See [trajectory measurements and verification](docs/acceleration-verification.md). These are deterministic simulation results, not hands-on/device feel validation.

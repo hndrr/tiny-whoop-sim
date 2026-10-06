@@ -25,7 +25,8 @@ for(const field of ['paused','crashed']){const x=fresh();x[field]=true;move(x,at
 const mission=new PrecisionMission(),m=fresh();mission.start(m);m.paused=false;move(m,at(0,-3),at(0,3));assert.equal(m.practiceCount,0);assert(m.ringFlash.every(v=>v===0));
 for(let i=0;i<8;i++){s.relocate(i);assert.equal(s.practiceCount,0);assert(s.practiceEnabled);assert(s.ringFlash.every(v=>v===0));assert(s.ringCooldown.every(v=>v===0));assert(s.ringLatched.every(v=>!v));assert.equal(s.gate,0)}
 s.reset();assert.equal(s.practiceCount,0);assert(s.practiceEnabled);
-const fast=fresh();[fast.x,fast.y,fast.z]=at(0,-4);fast.vy=300;fast.step(.03,new Set());assert.equal(fast.practiceCount,1,'actual high-speed physics step is swept');
+const fast=fresh();[fast.x,fast.y,fast.z]=at(0,-1.8);fast.vy=16;fast.step(.03,new Set());assert.equal(fast.practiceCount,1,'actual capped-speed physics step enters ring');
+const swept=fresh();move(swept,at(0,-4),at(0,4));assert.equal(swept.practiceCount,1,'swept segments still detect complete crossings');
 const all=fresh();for(let i=GATES.length-1;i>=0;i--)move(all,at(i,-3),at(i,3));assert.equal(all.practiceCount,18);all.step(.03,new Set());assert(!all.complete);assert.equal(all.finishTime,null);assert(all.elapsed>0);
 const nodes=new Map(),root={getElementById(id){if(!nodes.has(id))nodes.set(id,{setAttribute(){}});return nodes.get(id)}};
 for(const lang of ['en','ja']){i18n.setLanguage(lang);localizeFlight(all,true,root,true);assert.equal(nodes.get('distance').textContent,i18n.t('ringPassed'));all.ringFlash.fill(0);localizeFlight(all,true,root,true);assert.equal(nodes.get('distance').textContent,'');all.ringFlash[0]=1}

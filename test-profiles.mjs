@@ -15,7 +15,7 @@ for(const [id,p] of Object.entries(FLIGHT_PROFILES)){
  for(const value of [p.acceleration,p.response,p.topSpeed])assert(value>=.75&&value<=1.2);
  const launch=fly(id,.3),cruise=fly(id,20),turn=fly(id,.15,1/120,new Set(),{yaw:1,roll:1});
  results[id]={launch:launch.vy,speed:cruise.vy,turn:turn.heading,bank:turn.roll};
- assert(cruise.vy>8&&cruise.vy<16);assert(profileMetrics(id).includes(String(Math.round(p.topSpeed*100))));
+ assert(Math.abs(cruise.vy-16*p.topSpeed)<.1);assert(profileMetrics(id).includes(String(Math.round(p.topSpeed*100))));
  const a=fly(id,2,1/120,new Set(['ArrowUp','KeyA','KeyW']),{}),b=fly(id,2,1/120,new Set(),{pitch:1,yaw:1,throttle:1});assert.deepEqual(a,b,'keyboard and analog profile: '+id);
  const stable=fly(id,3,1/120),coarse=fly(id,3,1/40);assert(Math.abs(stable.y-coarse.y)<.25,'frame-rate position tolerance: '+id);assert(Math.abs(stable.vy-coarse.vy)<.1);
  const reset=new FlightState();reset.setAircraft(id);reset.reset();assert.equal(reset.aircraft,id);reset.relocate(1);assert.equal(reset.aircraft,id);
@@ -40,6 +40,7 @@ class Stick extends EventTarget{
 for(const id of Object.keys(FLIGHT_PROFILES))for(const type of ['mouse','touch']){
  const left=new Stick(),right=new Stick(),axes={};const sticks=bindSticks({getElementById:id=>id==='leftStick'?left:right,querySelectorAll:()=>[]},new Set(),axes);
  right.fire('pointerdown',type,1,50,17);assert.deepEqual(fly(id,1,1/120,new Set(),axes),fly(id,1,1/120,new Set(['ArrowUp']),{}));sticks.clear();assert.equal(axes.pitch,0);
+ right.fire('pointerdown',type,3,83,17);assert.deepEqual(fly(id,1,1/120,new Set(),axes),fly(id,1,1/120,new Set(['ArrowUp','ArrowRight']),{}),'diagonal keyboard/pointer parity: '+id+'/'+type);sticks.clear();
  left.fire('pointerdown',type,2,50,83);assert.deepEqual(fly(id,1,1/120,new Set(),axes),fly(id,1,1/120,new Set(['KeyS']),{}));sticks.clear();
 }
 console.log('PASS: five restrained real physics profiles, terminal speed/response/launch differences, hover, reset/relocation retention, frame-rate tolerance, keyboard/mouse/touch parity');

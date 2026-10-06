@@ -34,25 +34,43 @@ export class FlightState {
   if(this.practiceEnabled)this.elapsed+=dt;
   const before=[this.x,this.y,this.z];
   const input=controlInput(keys,axes),profile=this.profile,mix=1-Math.exp(-dt*6*profile.response);
-  this.pitch+=(-input.pitch*.5-this.pitch)*mix;
-  this.roll+=(input.roll*.5-this.roll)*mix;
+  // A round right-stick envelope gives keyboard diagonals the same thrust
+  // as pointer sticks. Gentle inputs keep their original linear precision.
+  const stickLength=Math.hypot(input.pitch,input.roll),stickScale=1/Math.max(1,stickLength);
+  const halfMix=1-Math.exp(-dt*3*profile.response);
+  const forcePitch=this.pitch+(-input.pitch*stickScale*.5-this.pitch)*halfMix;
+  const forceRoll=this.roll+(input.roll*stickScale*.5-this.roll)*halfMix;
+  const oldVx=this.vx,oldVy=this.vy;
+  this.pitch+=(-input.pitch*stickScale*.5-this.pitch)*mix;
+  this.roll+=(input.roll*stickScale*.5-this.roll)*mix;
   this.heading+=dt*1.35*profile.response*input.yaw;
   const lift=input.throttle;
   this.throttle=.5+lift*.35;
-  const upx=Math.cos(this.heading)*Math.sin(this.roll)+Math.sin(this.heading)*Math.sin(this.pitch)*Math.cos(this.roll),
-   upy=Math.sin(this.heading)*Math.sin(this.roll)-Math.cos(this.heading)*Math.sin(this.pitch)*Math.cos(this.roll),
-   upz=Math.cos(this.pitch)*Math.cos(this.roll);
-  const thrust=9.81/Math.max(.65,upz)+lift*8;
-  // Preserve the original WHOOP 75 horizontal baseline. Profiles tune launch,
-  // bank/yaw response and neutral-throttle terminal speed on the same inputs.
-  const drag=Math.exp(-dt*.45*profile.acceleration/profile.topSpeed);
-  this.vx=(this.vx+upx*thrust*profile.acceleration*dt)*drag;
-  this.vy=(this.vy+upy*thrust*profile.acceleration*dt)*drag;
+  const bank=Math.hypot(forceRoll,forcePitch),sin=Math.sin(this.heading),cos=Math.cos(this.heading);
+  const directionX=bank?(cos*forceRoll+sin*forcePitch)/bank:0;
+  const directionY=bank?(sin*forceRoll-cos*forcePitch)/bank:0;
+  const force=Math.tan(bank)*(9.81+lift*8*Math.cos(bank))*profile.acceleration;
+  const stick=Math.min(1,stickLength),speed=Math.hypot(this.vx,this.vy);
+  // Arcade self-level assistance: release brakes promptly, while a sustained
+  // large stick deflection reduces cruise damping and builds real velocity.
+  // Small steering corrections retain the familiar drag and thrust response.
+  const cruise=Math.max(0,(stick-.65)/.35);
+  const neutral=Math.max(0,1-stick/.12);
+  const requestedX=cos*input.roll+sin*-input.pitch,requestedY=sin*input.roll-cos*-input.pitch;
+  const opposition=speed&&stickLength?Math.max(0,-(this.vx*requestedX+this.vy*requestedY)/(speed*stickLength)):0;
+  const damping=(.45-.115*cruise+.75*neutral+.5*opposition*Math.min(1,stick/.12))*profile.acceleration/profile.topSpeed;
+  // Exact constant-force drag integration avoids frame-dependent damping.
+  const drag=Math.exp(-dt*damping),impulse=(1-drag)/damping;
+  this.vx=this.vx*drag+directionX*force*impulse;
+  this.vy=this.vy*drag+directionY*force*impulse;
   const vertical=stepVertical(this,lift,dt);
   this.vz=vertical.vz;
   const edge=boundaryAcceleration(this.x,this.y);
   this.vx+=edge[0]*dt;this.vy+=edge[1]*dt;
-  this.x+=this.vx*dt;this.y+=this.vy*dt;this.z+=vertical.dz;
+  // One horizontal norm cap: no diagonal or throttle boost beyond this bound.
+  const horizontalSpeed=Math.hypot(this.vx,this.vy),limit=16*profile.topSpeed;
+  if(horizontalSpeed>limit){this.vx*=limit/horizontalSpeed;this.vy*=limit/horizontalSpeed}
+  this.x+=(oldVx+this.vx)*.5*dt;this.y+=(oldVy+this.vy)*.5*dt;this.z+=vertical.dz;
   this.speed=Math.hypot(this.vx,this.vy,this.vz);
   const floor=groundHeight(this.x,this.y)+.08;
   if(this.z<floor){
