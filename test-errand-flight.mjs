@@ -10,8 +10,8 @@ const pilot=(state,objective)=>{
  const dx=objective.target[0]-state.x,dy=objective.target[1]-state.y,c=Math.cos(state.heading),s=Math.sin(state.heading);
  return {roll:clamp(((dx*c+dy*s)*.2-(state.vx*c+state.vy*s)*.9)/5),pitch:clamp(((-dx*s+dy*c)*.2-(-state.vx*s+state.vy*c)*.9)/5),yaw:0,throttle:clamp((objective.target[2]-state.z)*.3-state.vz*.1)};
 };
-assert.equal(ERRAND_STAGES.length,2);assert.equal(MISSION_STAGES.length,5);
-for(const stage of MISSION_STAGES.slice(3)){
+assert.equal(ERRAND_STAGES.length,2);assert.equal(MISSION_STAGES.length,7);
+for(const stage of MISSION_STAGES.slice(3,5)){
  assert(REGIONS.some(region=>region.id===stage.region));
  const length=stage.objectives.reduce((sum,o,index)=>{const previous=index?stage.objectives[index-1].target:o.checkpoint;return sum+Math.hypot(o.target[0]-previous[0],o.target[1]-previous[1])},0);
  assert(length>=300&&length<=900,`${stage.id}: bounded wide-world route (${length} m)`);
@@ -38,7 +38,7 @@ for(const stage of MISSION_STAGES.slice(3)){
 }
 const results=[];
 for(const [index,stage] of MISSION_STAGES.entries()){
- if(!stage.kind)continue;
+ if(!['delivery','inspection'].includes(stage.kind))continue;
  for(const {id:aircraft} of VEHICLES)for(const fps of [30,60]){
   const state=new FlightState(),mission=new PrecisionMission();state.setAircraft(aircraft);mission.start(state,index);state.paused=false;
   const dt=1/fps,events=[];let frames=0;

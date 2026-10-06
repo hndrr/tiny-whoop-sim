@@ -1,3 +1,4 @@
+import {finishObjective} from './test-mission-path-helper.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {FlightState} from './dist/flight.mjs';
@@ -61,8 +62,7 @@ try {
  function finishStage(){
   state.paused=false;
   while(ui.mission.objective){
-   const objective=ui.mission.objective;[state.x,state.y,state.z]=objective.target;state.vx=state.vy=state.vz=0;
-   for(let tick=0;tick<30&&ui.mission.objective===objective;tick++)ui.mission.update(state,.05);
+   const objective=ui.mission.objective;finishObjective(ui.mission,state);
    assert.notEqual(ui.mission.objective,objective,'each objective can be held to completion');
   }
   assert(ui.mission.done);assert(state.paused);$('pause').focus();ui.render();
@@ -72,9 +72,10 @@ try {
  for(let stage=0;stage<MISSION_STAGES.length;stage++){
   assert.equal(ui.mission.stageIndex,stage);ui.render();assert(dialog.hidden);
   assert.equal($('dispatchCount').textContent,i18n.t('missionStageProgress',{stage:stage+1,current:1,total:ui.mission.objectives.length}));
-  ui.mission.hold=ui.mission.holdSeconds/2;ui.render();assert.equal($('dispatchProgress').getAttribute('aria-valuenow'),'50');
+  ui.mission.hold=ui.mission.holdSeconds/2;if(ui.mission.objective.mechanic)ui.mission.task.progress=.5;ui.render();assert.equal($('dispatchProgress').getAttribute('aria-valuenow'),'50');
   const objective=ui.mission.objective,feedback=objectiveFeedback(state,objective),corners=scene.marker.children[1];
   assert.equal(corners.scale.x,feedback.radius/4);assert.equal(corners.children[0].position.z,(feedback.minAltitude+feedback.maxAltitude)/2);assert.equal(corners.children[0].scale.z,(feedback.maxAltitude-feedback.minAltitude)/1.1);
+  if(ui.mission.objective.mechanic)ui.mission.retry(state);
   finishStage();
   assert.equal(next.hidden,stage===MISSION_STAGES.length-1);assert.equal(document.activeElement,stage===MISSION_STAGES.length-1?replay:next);
   const snapshot=JSON.stringify({state,mission:ui.mission}),calls=actions.length,opened=dialog.showCount,cleared=clears;
@@ -114,5 +115,5 @@ try {
  ui.mission.start(state);finishStage();ui.mission.leave();ui.render();assert(dialog.hidden);assert(!dialog.open);assert.equal(document.activeElement,$('pause'));
  const css=readFileSync(new URL('./dist/style.css',import.meta.url),'utf8');
  assert.match(css,/#missionCompletion::backdrop/);assert.match(css,/#missionCongratulations\{font-size:clamp\(24px,6\.4vw,100px\)/);assert.match(css,/#nextMissionStage\[hidden\]\{display:none\}/);
- console.log('PASS: three-stage congratulations dialog, localized progress, final-stage actions, real completion pause, explicit callbacks, no repeated focus/input clearing, key isolation, replay/retry/free lifecycle, per-objective marker bounds');
+ console.log('PASS: seven-stage congratulations dialog, localized progress, final-stage actions, real completion pause, explicit callbacks, no repeated focus/input clearing, key isolation, replay/retry/free lifecycle, per-objective marker bounds');
 } finally {i18n.setLanguage(language);if(oldDocument===undefined)delete globalThis.document;else globalThis.document=oldDocument}

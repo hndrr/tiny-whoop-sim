@@ -1,3 +1,4 @@
+import {finishObjective} from './test-mission-path-helper.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
@@ -34,8 +35,7 @@ function finishStage(stageIndex){
  mission.start(state,stageIndex);state.paused=false;
  while(mission.objective){
   const objective=mission.objective;
-  [state.x,state.y,state.z]=objective.target;state.vx=.3;state.vy=.2;state.vz=0;
-  for(let frame=0;frame<20&&mission.objective===objective;frame++)mission.update(state,.05);
+  finishObjective(mission,state);state.vx=.3;state.vy=.2;state.vz=0;
   assert.notEqual(mission.objective,objective);
  }
  assert(mission.done);assert(state.paused);

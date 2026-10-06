@@ -1,6 +1,7 @@
 import {GATES} from './flight.mjs';
 import {groundHeight,REGIONS} from './world.mjs';
 import {ERRAND_STAGES,errandStatus} from './errand-missions.mjs';
+import {REGIONAL_STAGES,regionalState,regionalNavigation,regionalFeedback,advanceRegional} from './regional-missions.mjs';
 
 // An untimed task layer only. Flight dynamics, inputs and collision stay shared.
 export const PRECISION_OBJECTIVES=Object.freeze([
@@ -25,13 +26,14 @@ export const MISSION_STAGES=Object.freeze([
   {id:'windowOut',title:'windowOutTitle',hint:'windowOutHint',target:[-40,60,3.5],checkpoint:[-40,45,3.5],radius:1.5,minAltitude:3,maxAltitude:4,horizontalLimit:1,verticalLimit:.5},
   {id:'descent',title:'controlledDescentTitle',hint:'controlledDescentHint',target:[-40,60,.65],checkpoint:[-40,60,3.5],radius:1.5,minAltitude:.35,maxAltitude:.95,horizontalLimit:.7,verticalLimit:.35},
  ]},
-...ERRAND_STAGES,
+...ERRAND_STAGES,...REGIONAL_STAGES,
 ].map(stage=>Object.freeze({region:'airfield',...stage,objectives:Object.freeze(stage.objectives.map(o=>Object.freeze({...o,target:Object.freeze(o.target),checkpoint:Object.freeze(o.checkpoint)})))})));
 export const normalizeStageIndex=value=>Number.isInteger(value)&&value>=0&&value<MISSION_STAGES.length?value:0;
 
 // The HUD and completion use the same evaluator, so advice cannot drift from rules.
 export function objectiveFeedback(state,objective){
  if(!objective)return {reason:'complete',qualifies:false};
+ if(objective.mechanic)return regionalFeedback(state,objective,regionalState());
  const landing=objective.id==='return',radius=objective.radius??(landing?5:4),minAltitude=objective.minAltitude??(landing?.075:1.2),maxAltitude=objective.maxAltitude??(landing?1.5:4.8);
  const horizontalLimit=objective.horizontalLimit??(landing?2.5:3),verticalLimit=objective.verticalLimit??(landing?1.5:2);
  const distance=Math.hypot(state.x-objective.target[0],state.y-objective.target[1]);
@@ -41,10 +43,15 @@ export function objectiveFeedback(state,objective){
 }
 export function qualifiesForObjective(state,objective){return objectiveFeedback(state,objective).qualifies}
 export class PrecisionMission {
+ #state=null;
  constructor(){this.completedStages=[];this.stageIndex=0;this.active=false;this.index=0;this.hold=0;this.done=false}
+ resetTask(){this.task=regionalState();if(this.objective?.mechanic==='orbit'&&this.index>0)this.task.departCenter=[...this.objectives[this.index-1].target]}
  get stage(){return MISSION_STAGES[this.stageIndex]}
  get objectives(){return this.stage.objectives}
- get taskStatus(){return errandStatus(this.stage,this.index)}
+ get taskStatus(){return this.stage.kind==='weave'?(this.done?'weaveComplete':'weaveAwaiting'):this.stage.kind==='circuit'?(this.done?'orbitComplete':'orbitAwaiting'):errandStatus(this.stage,this.index)}
+ get progress(){return this.done?1:this.objective?.mechanic?this.task.progress:this.hold/HOLD_SECONDS}
+ get navigationTarget(){return this.objective?.mechanic?regionalNavigation(this.objective,this.task,this.#state):this.objective?.target}
+ feedback(state){return this.objective?.mechanic?regionalFeedback(state,this.objective,this.task):objectiveFeedback(state,this.objective)}
  get holdSeconds(){return HOLD_SECONDS}
  get allComplete(){return MISSION_STAGES.every((_,index)=>this.completedStages.includes(index))}
  get hasNext(){return this.stageIndex<MISSION_STAGES.length-1}
@@ -58,7 +65,9 @@ export class PrecisionMission {
   const o=this.objective;state.reset();
   [state.x,state.y,state.z]=o.checkpoint;
   state.region=REGIONS.findIndex(region=>region.id===this.stage.region);
-  state.heading=Math.atan2(-(o.target[0]-state.x),o.target[1]-state.y);
+  this.resetTask();this.#state=state;
+  const headingTarget=this.navigationTarget;
+  state.heading=Math.atan2(-(headingTarget[0]-state.x),headingTarget[1]-state.y);
   // Disable legacy race bookkeeping while dispatches are active.
   state.practiceEnabled=false;state.complete=true;state.explore=true;state.gate=GATES.length;state.finishTime=null;
   this.hold=0;
@@ -67,10 +76,14 @@ export class PrecisionMission {
   if(!this.objective||state.paused||state.crashed)return false;
   if(!Number.isFinite(dt)||dt<=0)return false;
   // Called once after the full frame's collision checks, never before them.
-  const step=Math.min(dt,.05);
+  const step=Math.min(dt,.05);this.#state=state;
+  if(this.objective.mechanic){
+   if(!advanceRegional(state,this.objective,this.task,step))return false;
+  }else{
   this.hold=Math.max(0,Math.min(HOLD_SECONDS,this.hold+(qualifiesForObjective(state,this.objective)?step:-step*.6)));
   if(this.hold+1e-9<HOLD_SECONDS)return false;
-  this.hold=0;this.index++;
+  }
+  this.hold=0;this.index++;this.resetTask();
   if(this.index===this.objectives.length){this.done=true;if(!this.completedStages.includes(this.stageIndex))this.completedStages.push(this.stageIndex);state.paused=true;}
   return true;
  }

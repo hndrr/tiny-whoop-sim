@@ -1,3 +1,4 @@
+import {finishObjective} from './test-mission-path-helper.mjs';
 import assert from 'node:assert/strict';
 import {existsSync,readFileSync} from 'node:fs';
 import {runInNewContext} from 'node:vm';
@@ -323,7 +324,7 @@ try {
  console.log('PASS: shared preview fallback/recovery keeps both modes usable and disposes GPU targets without a permanent render loop');
  // Stage choices use the same pending transaction as mode and aircraft.
  const missionChoices=dialog.querySelector('.mission-stage-grid');assert.equal(missionChoices.children.length,MISSION_STAGES.length);
- for(const stageIndex of [1,2,3,4,0]){
+ for(const stageIndex of [1,2,3,4,5,6,0]){
   controller.startPrecision();const before=liveSnapshot(),saved=currentPersistence();missionChoices.children[stageIndex].click();vehicleButton('cine95').click();
   for(const language of ['ja','en']){i18n.setLanguage(language);assert.equal(missionChoices.children[stageIndex].getAttribute('aria-pressed'),'true');assert.equal(missionChoices.children[stageIndex].querySelector('strong').textContent,i18n.t(MISSION_STAGES[stageIndex].title))}
   const expectedRegion=MISSION_STAGES[stageIndex].region;
@@ -339,7 +340,7 @@ try {
   assert.deepEqual([state.x,state.y,state.z],[...MISSION_STAGES[stageIndex].objectives[0].checkpoint]);
  }
  function completeStage(){
-  while(!controller.mission.done){const target=controller.mission.objective.target;[state.x,state.y,state.z]=target;state.vx=state.vy=state.vz=0;state.paused=false;for(let frame=0;frame<16;frame++)controller.mission.update(state,.05)}
+  while(!controller.mission.done)finishObjective(controller.mission,state)
   controller.precision.render(true);assert.equal(state.paused,true);assert.equal($('missionCompletion').open,true);assert.equal(keys.size,0);assert.deepEqual(axes,{pitch:0,roll:0,throttle:0,yaw:0});
  }
  completeStage();const completePosition=[state.x,state.y,state.z];controller.toggle();assert.equal(state.paused,true);assert.deepEqual([state.x,state.y,state.z],completePosition);
@@ -355,8 +356,8 @@ try {
  $('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,1);assert.equal(controller.mission.done,false);assert.equal(state.paused,false);assert.equal(state.aircraft,'cine95');
  completeStage();$('replayMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,1);assert.equal(controller.mission.index,0);assert.equal(state.paused,false);
  completeStage();$('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,2);assert.equal(state.paused,false);
- for(const stageIndex of [3,4]){completeStage();assert.equal($('nextMissionStage').hidden,false);$('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,stageIndex);assert.equal(controller.selection.selected.region,MISSION_STAGES[stageIndex].region);assert.equal(state.region,REGIONS.findIndex(region=>region.id===MISSION_STAGES[stageIndex].region));}
- completeStage();assert.equal($('nextMissionStage').hidden,true);assert.equal($('missionCompletionSubtitle').textContent,i18n.t('allStagesComplete',{stage:5,title:i18n.t(MISSION_STAGES[4].title)}));
+ for(const stageIndex of [3,4,5,6]){completeStage();assert.equal($('nextMissionStage').hidden,false);$('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,stageIndex);assert.equal(controller.selection.selected.region,MISSION_STAGES[stageIndex].region);assert.equal(state.region,REGIONS.findIndex(region=>region.id===MISSION_STAGES[stageIndex].region));}
+ completeStage();assert.equal($('nextMissionStage').hidden,true);assert.equal($('missionCompletionSubtitle').textContent,i18n.t('allStagesComplete',{stage:7,title:i18n.t(MISSION_STAGES[6].title)}));
  const finalPosition=[state.x,state.y,state.z];$('leaveMissionCompletion').click();await flushFrames();assert.equal(controller.mission.active,false);assert.equal(state.paused,false);assert.equal(state.practiceEnabled,true);assert.deepEqual([state.x,state.y,state.z],finalPosition);assert.equal($('missionCompletion').open,false);
  console.log('PASS: stage choices cancel atomically, EN/JA pending stage survives, explicit Next/Replay/final Free Flight launch safely with selected aircraft and no completion teleport');
  console.log('Unified flight setup checks passed (actual Node DOM/controller contracts; browser/mobile layout QA remains separate)');
