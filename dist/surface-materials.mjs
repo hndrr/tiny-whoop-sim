@@ -29,3 +29,13 @@ export function createSkyEnvironment(renderer){if(!renderer.extensions.has('EXT_
   renderer.setRenderTarget(previous,face,level);renderer.xr.enabled=xr;renderer.autoClear=autoClear;
  }
 }
+// Cylinders close on the same mirrored-image edge; caps use planar metre UVs.
+export function scaleCylinderSurfaceUV(geometry,{diameter,height,tileMeters,repeat=1}){
+ const uv=geometry.attributes.uv,position=geometry.attributes.position,normal=geometry.attributes.normal;
+ const spans=2*Math.max(1,Math.round(Math.PI*diameter*repeat/tileMeters/2));
+ for(let i=0;i<uv.count;i++){
+  if(Math.abs(normal.getZ(i))>.5)uv.setXY(i,(position.getX(i)+diameter/2)/tileMeters,(position.getY(i)+diameter/2)/tileMeters);
+  else uv.setXY(i,uv.getX(i)*spans/repeat,uv.getY(i)*height/tileMeters);
+ }
+ return geometry;
+}

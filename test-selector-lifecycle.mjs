@@ -129,8 +129,9 @@ try {
   render(scene,camera){this.scene=scene;this.camera=camera;if(this.fail)throw Error('simulated preview renderer unavailable')},
   readRenderTargetPixels(_target,_x,_y,_w,_h,pixels){pixels.fill(0)},
  };
+ let stageCaptureFail=false;
  const selector=createFlightSelector({renderer,
-  captureStage(index){captures.push(index);return {toDataURL:()=>`data:image/png;test,region-${index}`}},
+  captureStage(index){captures.push(index);if(stageCaptureFail)throw Error('simulated scenery capture failure');return {toDataURL:()=>`data:image/png;test,region-${index}`}},
   getSelection:()=>selected,
   onOpen(){openCalls++;state.paused=true},
   onApply(next,changes){
@@ -212,6 +213,21 @@ try {
  }
  assert.equal(captures.length,REGIONS.length,'reopening reuses completed stage previews');
  console.log('PASS: all five aircraft apply via real form submit, persist, restore on reopen, and discard Cancel/Escape edits with no live-profile mutation');
+ // Late texture loads refresh only cached scenery, never pending/live selection.
+ const textureRefreshLive={...selected},textureRefreshApplies=applies.length,textureRefreshWrites=writes;
+ selector.open();vehicleButton('micro65').click();regionButton('offshore').click();
+ const beforeTextureCaptures=captures.length;
+ selector.refreshStagePreviews();selector.refreshStagePreviews();await flushFrames();
+ assertPending('micro65','offshore');assertLive(textureRefreshLive,textureRefreshApplies,textureRefreshWrites);
+ assert.equal(captures.length,beforeTextureCaptures+REGIONS.length,'newer invalidation cancels stale thumbnail work');
+ stageCaptureFail=true;selector.refreshStagePreviews();await flushFrames();for(const card of dialog.querySelectorAll('.stage-card')){assert.equal(card.querySelector('img').hidden,true);assert.equal(card.querySelector('.stage-loading').hidden,false)}
+ stageCaptureFail=false;selector.refreshStagePreviews();await flushFrames();for(const card of dialog.querySelectorAll('.stage-card')){assert.equal(card.querySelector('img').hidden,false);assert.equal(card.querySelector('.stage-loading').hidden,true)}
+ assertPending('micro65','offshore');assertLive(textureRefreshLive,textureRefreshApplies,textureRefreshWrites);
+ await closeWith(()=>selector.close());
+ const closedCaptures=captures.length;selector.refreshStagePreviews();await flushFrames();assert.equal(captures.length,closedCaptures,'closed setup does not render');
+ selector.open();await flushFrames();assert.equal(captures.length,closedCaptures+REGIONS.length);assertPending(textureRefreshLive.vehicle,textureRefreshLive.region);await closeWith(()=>selector.close());
+ console.log('PASS: late painted texture thumbnails refresh without losing pending choices, committing, restarting flight, or rendering a closed panel');
+
 
  selector.open();vehicleButton('racer90').click();regionButton('harbor').click();form.requestSubmit();await flushFrames();
  assert.deepEqual(applies.at(-1),{next:{vehicle:'racer90',region:'harbor'},changes:{areaChanged:true,vehicleChanged:true,mode:'free',stageIndex:0}});

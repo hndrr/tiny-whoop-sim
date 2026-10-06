@@ -1,6 +1,7 @@
+import {loadPaintedTextures,applyPaintedArchitecture} from './painted-materials.mjs';
 import {createForestVisuals} from './forest-visuals.mjs';
 import {createRenderProfile} from './render-profile.mjs';
-import {createSurfaceMaterials,surfaceBoxGeometry,createSkyEnvironment} from './surface-materials.mjs';
+import {createSurfaceMaterials,surfaceBoxGeometry,createSkyEnvironment,scaleCylinderSurfaceUV} from './surface-materials.mjs';
 import {localizeFlight} from './localize-flight.mjs';
 import {i18n} from './i18n.mjs';
 import {setupPrecision} from './precision-ui.mjs';
@@ -41,13 +42,16 @@ for(let i=0;i<256*256;i++)rand();
 const asphalt=surfaces.asphalt;box([5,25,.025],[23,125,.05],asphalt);const white=mat('#c8c7b5'),yellow=mat('#c7a24e');for(let y=-28;y<85;y+=12)box([5,y,.058],[.2,5,.01],white);for(const x of [-5.5,15.5])box([x,25,.06],[.12,120,.01],white);for(const y of [-29,79])for(let x=-3;x<15;x+=3)box([x,y,.061],[1,6,.015],white);box([32,25,.02],[31,75,.04],asphalt);
 // Open hangars, service tunnel and cargo alleys. Collision uses these same boxes.
 const concrete=surfaces.concrete,roofMat=mat('#637578',.65,.45),stageMats={floor:asphalt,wall:concrete,roof:roofMat,steel:metal,crate:mat('#8c704b'),container:mat('#6b827b',.75,.15),glass};
+roofMat.userData.tileMeters=6;
 const skyEnvironment=createSkyEnvironment(renderer);if(skyEnvironment)for(const material of [metal,roofMat,glass]){material.envMap=skyEnvironment.texture;material.envMapIntensity=.35;material.envMapRotation.x=Math.PI/2}
 for(const o of SOLIDS)box(o.position,o.size,stageMats[o.material]);
 const regionGroups=REGIONS.map(()=>new T.Group());regionGroups.forEach(g=>scene.add(g));
-for(const o of WORLD_OBJECTS){let m;if(o.shape==='cylinder'){const geo=new T.CylinderGeometry(o.size[0]/2,o.size[0]/2,o.size[2],16);geo.rotateX(Math.PI/2);m=mesh(geo,stageMats[o.material]||yellow,o.position,null,regionGroups[o.region])}else m=box(o.position,o.size,stageMats[o.material]||yellow,regionGroups[o.region]);m.castShadow=false}
+for(const o of WORLD_OBJECTS){let m;if(o.shape==='cylinder'){const geo=new T.CylinderGeometry(o.size[0]/2,o.size[0]/2,o.size[2],16);geo.rotateX(Math.PI/2);const material=stageMats[o.material]||yellow;if(material.userData.tileMeters)scaleCylinderSurfaceUV(geo,{diameter:o.size[0],height:o.size[2],tileMeters:material.userData.tileMeters,repeat:material===concrete?.5:1});m=mesh(geo,material,o.position,null,regionGroups[o.region])}else m=box(o.position,o.size,stageMats[o.material]||yellow,regionGroups[o.region]);m.castShadow=false}
 const turbines=[];for(const [x,y] of [[-90,-60],[0,0],[95,60]]){const rotor=new T.Group(),r=REGIONS[6];rotor.position.set(r.x+x,r.y+y+5,REGION_ELEVATIONS[6]+71);for(let i=0;i<3;i++){const blade=box([0,0,14],[1.4,.3,28],white,rotor);blade.rotation.y=i*Math.PI*2/3;blade.position.set(Math.sin(i*Math.PI*2/3)*14,0,Math.cos(i*Math.PI*2/3)*14);blade.castShadow=false}regionGroups[6].add(rotor);turbines.push(rotor)}
 // Original tree positions and random-stream consumption are preserved.
 const forest=createForestVisuals({random:rand,terrainHeight,nearestRegion});scene.add(forest.group);
+// Loads never block flight or replace a working material with a failed image.
+loadPaintedTextures(renderer,{coarse:coarsePointer}).then(textures=>{applyPaintedArchitecture(surfaces,roofMat,textures);forest.applyPaintedTextures(textures);flightSelection?.selector.refreshStagePreviews?.()}).catch(()=>{/* Keep procedural fallback if integration fails. */});
 // Interior ceiling lights, painted safety lines and loading-bay frames.
 const lightMat=new T.MeshStandardMaterial({color:'#e4e7d1',emissive:'#f3efd4',emissiveIntensity:.9});
 for(const [cx,cy,w,d,h] of [[-40,30,30,44,7],[-42,80,44,24,8]]){for(let y=cy-d/2+5;y<cy+d/2;y+=8){box([cx,y,h-.28],[4,.2,.055],lightMat);for(const x of [cx-7,cx+7])box([x,y,.025],[.10,4,.012],yellow)}for(const x of [cx-w/2,cx+w/2]){for(const sy of [-1,1])box([x,cy+sy*6,2.7],[.35,.15,5.4],yellow);box([x,cy,5.43],[.35,12,.14],yellow)}const fill=new T.PointLight('#c8deed',120,28,2);fill.position.set(cx,cy,h-1);scene.add(fill)}

@@ -2,9 +2,11 @@
 
 Source baseline: main merge `986af821dd663e45fb709ac545d890bc47ab6e6c` (same tree as reviewed PR5 head `6350d9f`). This pass does not change flight physics, collisions, gate positions, missions, selector state, localization, or HTML/CSS.
 
-## Authorship and material choice
+## Initial procedural foundation
 
-`dist/surface-patterns.mjs` is original deterministic procedural artwork, authored for this project. There are no downloaded image assets, stock photos, Megascans/Fab assets, generated-image service outputs, new dependencies, or new asset-license acceptance. Its multiscale periodic noise creates gravel/aggregate, concrete pores and restrained broad variation. Generated texture pixels were inspected as PNGs in the preparation workspace; this is not a screenshot of the game.
+The later generated-image increment is documented in [painted-art.md](painted-art.md). It replaces the concrete albedo and adds hangar/forest images; the discussion below records the procedural foundation.
+
+`dist/surface-patterns.mjs` is original deterministic procedural artwork, authored for this project. That initial foundation used no downloaded image assets, stock photos, Megascans/Fab assets, generated-image service outputs, new dependencies, or new asset-license acceptance. Its multiscale periodic noise creates gravel/aggregate, concrete pores and restrained broad variation. Generated texture pixels were inspected as PNGs in the preparation workspace; this is not a screenshot of the game.
 
 Two surfaces each use one 256×256 RGBA albedo and one 256×256 grayscale detail texture. Albedo is sRGB; detail is linear/no-color-space. One detail texture is shared by roughness and bump inputs. These are deliberately correlated art-directed roughness/bump variations, not measured PBR scans or normals inferred as physical truth from a photograph. Bump is shading only: it never displaces a runway, wall or collision surface. Metre-based box UVs avoid stretching a small noise map over a whole runway. Asphalt repeats at 4 m, concrete at 3 m. The old global random sequence is advanced by its original 65,536 asphalt samples to preserve subsequent trees, vegetation and rocks.
 
@@ -20,7 +22,7 @@ The original r180 render-to-texture flight path bypassed material tone mapping a
 
 Initial surface commit source payload versus its baseline: +7,851 raw bytes, or +3,633 bytes when each changed/new runtime JS file is gzip-compressed at level 9. These are local encoding measurements; actual CDN headers/compression may differ.
 
-No image files need network transfer: four RGBA maps are generated from the small JS module at startup. PNG reference encodings in preparation measured 69,213 + 34,295 + 73,109 + 57,862 = 234,479 bytes, but these files are not shipped. They are lossless preview encodings, not GPU-compressed textures.
+For the initial procedural foundation, no image files needed network transfer: four RGBA maps are generated from the small JS module at startup. PNG reference encodings in preparation measured 69,213 + 34,295 + 73,109 + 57,862 = 234,479 bytes, but these files are not shipped. They are lossless preview encodings, not GPU-compressed textures.
 
 Each 256 RGBA8 texture including its full mip chain is `4 × (256² + 128² + ... + 1) = 349,524 bytes`. Four maps use 1,398,096 bytes (1.333 MiB) of estimated texture storage; replacing the old one-map asphalt subtracts 349,524, for a net 1,048,572-byte increase. Grass retains its existing 256px allocation, UV scale and random-sample count, but now uses neutral light detail instead of a second dark green/brown tint. The CPU typed arrays total 1,048,576 bytes, retained by Three for context restoration. This excludes driver overhead and geometry.
 
