@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {FlightState,GATES} from './dist/flight.mjs';
 import {PrecisionMission} from './dist/precision-missions.mjs';
 import {localizeFlight} from './dist/localize-flight.mjs';
-import {i18n} from './dist/i18n.mjs';
+import {i18n,CATALOG} from './dist/i18n.mjs';
 const fresh=()=>{const s=new FlightState();s.paused=false;return s};
 const move=(s,a,b,dt=.02)=>{[s.x,s.y,s.z]=b;s.updatePractice(a,dt)};
 const at=(i,d=0)=>GATES[i].map((v,j)=>v+(j===1?d:0));
@@ -28,10 +28,26 @@ s.reset();assert.equal(s.practiceCount,0);assert(s.practiceEnabled);
 const fast=fresh();[fast.x,fast.y,fast.z]=at(0,-4);fast.vy=300;fast.step(.03,new Set());assert.equal(fast.practiceCount,1,'actual high-speed physics step is swept');
 const all=fresh();for(let i=GATES.length-1;i>=0;i--)move(all,at(i,-3),at(i,3));assert.equal(all.practiceCount,18);all.step(.03,new Set());assert(!all.complete);assert.equal(all.finishTime,null);assert(all.elapsed>0);
 const nodes=new Map(),root={getElementById(id){if(!nodes.has(id))nodes.set(id,{setAttribute(){}});return nodes.get(id)}};
-for(const lang of ['en','ja']){i18n.setLanguage(lang);localizeFlight(all,true,root,true);assert.equal(nodes.get('distance').textContent,i18n.t('ringPassed'));all.ringFlash.fill(0);localizeFlight(all,true,root,true);assert.equal(nodes.get('distance').textContent,i18n.t('practiceHint'));all.ringFlash[0]=1}
+for(const lang of ['en','ja']){i18n.setLanguage(lang);localizeFlight(all,true,root,true);assert.equal(nodes.get('distance').textContent,i18n.t('ringPassed'));all.ringFlash.fill(0);localizeFlight(all,true,root,true);assert.equal(nodes.get('distance').textContent,'');all.ringFlash[0]=1}
 i18n.setLanguage('en');
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8'),html=readFileSync(new URL('./dist/index.html',import.meta.url),'utf8');
 assert(!html.includes('id="timer"'));assert(!html.includes('id="dots"'));assert(!main.includes('NEXT '));assert(!main.includes('FINISH '));assert(!main.includes('ctx.fillText(String(i+1)'));
 assert(main.includes('s.crashed=true;s.updatePractice('),'building collision is checked before practice feedback');
 assert(main.includes('g.group.visible=!precision?.mission.active'));assert(main.includes('s.ringFlash[i]>0?gateMint:gateIdle'));
 console.log('PASS: any-order/both directions, swept fast passes, hover/jitter/cooldown, reentry, pause/crash/mission suppression, area/reset bookkeeping, untimed HUD and ring feedback');
+
+// Free flight keeps its count, without framing it as practice or explaining ring rules.
+for(const lang of ['en','ja']){
+ i18n.setLanguage(lang);assert.equal(i18n.t('rings'),lang==='ja'?'リング':'RINGS');
+ for(const text of Object.values(CATALOG[lang]))assert(!/RING PRACTICE|ANY ORDER|EITHER WAY|optional practice|リング練習|順番なし|好きなリング|練習できます/.test(text));
+ const idle=new FlightState();localizeFlight(idle,true,root);assert.equal(nodes.get('subtitle').textContent,i18n.t('modeFree'));assert.equal(nodes.get('distance').textContent,'');
+ idle.paused=false;move(idle,at(0,-3),at(0,3));localizeFlight(idle,true,root,true);assert.equal(idle.practiceCount,1);assert.equal(nodes.get('distance').textContent,i18n.t('ringPassed'));
+ idle.reset();localizeFlight(idle,true,root);assert.equal(idle.practiceCount,0);assert.equal(nodes.get('distance').textContent,'');
+}
+i18n.setLanguage('en');
+assert(html.includes('data-i18n="rings">RINGS</label><strong><span id="gate">0</span>'));
+assert(main.includes("$('gate').textContent=s.practiceCount"),'live counter remains wired to passes');
+assert(html.includes('<p id="distance" role="status"></p>'),'pass feedback is empty initially and accessible');
+assert(!/RING PRACTICE|ANY ORDER|EITHER WAY|optional practice/.test(html));
+assert(readFileSync(new URL('./dist/style.css',import.meta.url),'utf8').includes('#distance:empty{display:none}'),'idle feedback leaves no empty line');
+console.log('PASS: neutral bilingual ring counter, no persistent practice instructions, temporary accessible pass feedback and reset');
