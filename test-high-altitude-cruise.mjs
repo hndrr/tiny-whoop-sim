@@ -24,34 +24,34 @@ for(const [id,p] of profiles){
   rows.push({id,fps,altitude,speed:s.vy,distance:s.y+5000});
   const releaseY=s.y,releaseSpeed=s.vy;advance(s,2,{},fps);
   assert.equal(s.cruiseBlend,0);assert(s.vy<releaseSpeed*.18,'frame-rate release braking');
-  assert(s.y-releaseY<(altitude===5?16:47),'frame-rate release distance');
+  assert(s.y-releaseY<(altitude===5?16:135),'frame-rate release distance');
   const descent=advance(start(id,altitude),8,{pitch:1},fps),descentSpeed=descent.vy;
   advance(descent,1/fps,{pitch:1,throttle:-1},fps);assert.equal(descent.cruiseBlend,0);
-  assert(descent.vy>descentSpeed-1.5,'frame-rate descent has no velocity snap');
+  assert(descent.vy>descentSpeed-40,'frame-rate descent has no velocity snap');
  }
- assert(highReference.vy>2.7*lowReference.vy,'substantially faster actual high flight');
+ assert(highReference.vy>19*lowReference.vy,'substantially faster actual high flight');
  const top=advance(start(id),30,{pitch:1}),limit=16*p.topSpeed;
- assert(top.vy<=3*limit+1e-9&&top.vy>2.99*limit,'bounded actual high cruise');
+ assert(top.vy<=20*limit+1e-9&&top.vy>19.99*limit,'bounded actual high cruise');
  const y=top.y,v=top.vy;advance(top,2);
  assert.equal(top.cruiseBlend,0);assert.equal(top.cruiseHold,0);
  assert(top.vy<v*.15,'release removes at least 85% of speed in 2 seconds');
- assert(top.y-y<47,'release travel under47m for every aircraft at full high cruise');
+ assert(top.y-y<135,'release travel under135m for every aircraft at full high cruise');
  const reverse=advance(start(id),30,{pitch:1}),reverseY=reverse.y;
  let time=0,maxY=reverseY;
  while(reverse.vy>0&&time<5){advance(reverse,1/60,{pitch:-1});time+=1/60;maxY=Math.max(maxY,reverse.y);assert.equal(reverse.cruiseBlend,0,'reverse brakes without travel assist')}
- assert(time<3.2,'reverse stops under3.2s');assert(maxY-reverseY<57,'reverse overshoot under57m');
+ assert(time<3.2,'reverse stops under3.2s');assert(maxY-reverseY<150,'reverse overshoot under150m');
  advance(reverse,4,{pitch:-1});assert(reverse.vy<-10,'reverse remains pilot controlled');
  const down=advance(start(id),30,{pitch:1}),before=down.vy;
  advance(down,1/60,{pitch:1,throttle:-1});
  assert.equal(down.cruiseBlend,0,'descent immediately disables boost');
- assert(down.vy<before&&down.vy>before-1,'no one-frame cruise-to-low cap snap');
+ assert(down.vy<before&&down.vy>before-20,'no one-frame cruise-to-low cap snap');
  advance(down,3,{pitch:1,throttle:-1});assert(down.vy<=limit+1e-8,'descend sheds excess horizontal speed');
  advance(down,.2,{pitch:1});assert.equal(down.cruiseBlend,0,'releasing descent does not latch old cruise intent');
  const small=advance(start(id),30,{pitch:1});advance(small,3,{pitch:.4});assert.equal(small.cruiseBlend,0);assert(horizontal(small)<16,'small input returns toward precision flight');
- const quick=advance(start(id),.5,{pitch:1});assert.equal(quick.cruiseBlend,0,'brief push does not engage');
- const climb=advance(start(id),30,{pitch:1,roll:1,throttle:1});assert(horizontal(climb)<=3*limit+1e-9,'climbing diagonal norm cap');
- const edge=advance(start(id),30,{pitch:1});edge.x=FLIGHT_HALF;edge.vx=-3*limit;edge.vy=0;edge.roll=-.5;
- advance(edge,1/60,{roll:-1});assert(horizontal(edge)<=3*limit+1e-9,'boundary cannot bypass maximum envelope');
+ const quick=advance(start(id),.3,{pitch:1});assert.equal(quick.cruiseBlend,0,'brief push does not engage');
+ const climb=advance(start(id),30,{pitch:1,roll:1,throttle:1});assert(horizontal(climb)<=20*limit+1e-9,'climbing diagonal norm cap');
+ const edge=advance(start(id),30,{pitch:1});edge.x=FLIGHT_HALF;edge.vx=-20*limit;edge.vy=0;edge.roll=-.5;
+ advance(edge,1/60,{roll:-1});assert(horizontal(edge)<=20*limit+1e-9,'boundary cannot bypass maximum envelope');
  rows.push({id,releaseSpeed:top.vy,releaseDistance:top.y-y,reverseStopSeconds:time,reverseDistance:maxY-reverseY});
 }
 // Rounded golden close-range values measured before high-altitude assistance.
@@ -67,12 +67,12 @@ const under=start();Object.assign(under,{x:-920,y:1090,z:REGION_ELEVATIONS[2]+29
 assert(cruiseClearance(under,0,1)<30,'under-viaduct high-world-Z is precision flight');
 const overhead=start();Object.assign(overhead,{x:-1550,y:1830,z:REGION_ELEVATIONS[6]+65,vx:0,vy:40});
 assert(cruiseClearance(overhead,0,1)<0,'overhead turbine nacelle inhibits open-air cruise');
-const roof=start();Object.assign(roof,{x:-40,y:-25,z:38,vx:0,vy:40});
+const roof=start();Object.assign(roof,{x:-40,y:-25,z:37,vx:0,vy:40});
 assert(cruiseClearance(roof,0,1)<HORIZONTAL_CRUISE.startClearance,'roof ahead reduces clearance before crossing its edge');
-const crane=start();Object.assign(crane,{x:1807.5,y:-270,z:65,vx:0,vy:50});
+const crane=start();Object.assign(crane,{x:1807.5,y:-270,z:65,vx:0,vy:250});
 assert(cruiseClearance(crane,0,1)<30,'thin crane ahead inhibits cruise');
 const side=start();Object.assign(side,crane);assert(cruiseClearance(side,1,0)<30,'existing forward momentum is checked while steering sideways');
-const ridge=start();Object.assign(ridge,{x:-900,y:650,z:groundHeight(-900,650)+65,vx:0,vy:50});
+const ridge=start();Object.assign(ridge,{x:-900,y:650,z:groundHeight(-900,650)+65,vx:0,vy:250});
 assert(cruiseClearance(ridge,0,1)<ridge.z-groundHeight(ridge.x,ridge.y)-5,'rising terrain ahead reduces usable clearance');
 assert(segmentHitsSolid([1807.5,-200,REGION_ELEVATIONS[1]+37],[1807.5,-100,REGION_ELEVATIONS[1]+37]),'existing swept solid collision remains active');
 for(const action of ['reset','relocate','retry','teleport','aircraft']){

@@ -1,49 +1,64 @@
-# High-altitude travel assistance
+# Exaggerated world travel, nominal indicated speed
 
-This is intentionally game-like **actual horizontal flight speed**. It does not change world scale, HUD units, FOV, camera animation, missions, vertical flight, or collision geometry. Holding a strong directional input in clear high air builds up to **three times the original horizontal speed**. There is no extra key or setting.
+High-air travel deliberately exaggerates real movement through the world while the speed display follows an independent, drone-like nominal flight model. It is virtual telemetry, not the physical distance travelled per second. WHOOP's normal indicated horizontal bound remains 16 m/s (about 58 km/h); its clear-high-air world-travel bound is now 320 m/s, **20× normal travel**, rather than the previous 48 m/s. Positions, scenery flow, collisions, mission speed tolerances and navigation distances all use actual world movement. Only the HUD speed uses `indicatedSpeed`.
 
-## Envelope and controls
+## Input, ramp and braking
 
-- The original close-range model is retained, including full-stick damping 0.335, the WHOOP 16 m/s horizontal limit, gentle input and release/reverse braking
-- Assistance requires more than 80% right-stick magnitude and sustained consistent travel: a 0.65 s delay followed by a 1.85 s smooth ramp. Keyboard, mouse and touch use the same normalized circular envelope
-- The smooth height blend starts at 30 m **usable clearance** and reaches full strength at 90 m. Clearance is relative to terrain/sea and collision-solid tops, not absolute world Z. Look-ahead terrain receives a 4 m margin, so unobstructed level terrain typically needs 34–94 m actual AGL
-- Look-ahead extends 20 m plus 2.5 seconds of current horizontal travel. Terrain is sampled at intervals no greater than 8 m. Collision solids use a continuous XY corridor padded by 8 m, including thin beams, overhead decks and roofs. During steering, both intended travel and existing momentum paths are considered
-- Release, descent input, established downward motion, opposing travel and strong yaw remove travel assistance. Small corrections retain the original force model. Input release does not latch a cruise mode
-- Existing excess speed is shed continuously, rather than snapped to a lower cap. The recovery speed limit falls at 18 m/s² times the aircraft acceleration factor; normal drag/reverse braking may slow faster. Pilots must still brake and steer for arrival
-- Reset, relocation, mission retry, aircraft switching and direct position discontinuities discard stored cruise intent. Pause freezes the state; normal input clearing cancels assistance on resume
+- Low flight retains the original force, damping, control response and 16 m/s WHOOP bound. Nominal telemetry integrates this same unscaled control model independently of altitude assistance. Altitude changes do not multiply or divide the displayed speed
+- More than 80% directional-stick magnitude is required. A 0.4 s consistent-input delay is followed by a 1.2 s smooth engagement ramp; the travel response then builds speed rapidly. There are no new keys or menus
+- The height blend still uses 30–90 m **usable clearance**. With the 4 m look-ahead terrain margin, full open-ocean/flat-ground travel begins at 94 m actual AGL; assistance starts above 34 m. Terrain elevation, roofs and overhead collision solids count. Absolute world Z does not
+- Full travel multiplies thrust and its corresponding damping response by 2.4, approaching the 20× bound quickly rather than merely raising an unreachable speed cap
+- Releasing directional input, descending, opposing travel or making a strong turn cancels assistance. Overspeed drag and a 240 m/s²×aircraft-factor recovery rate shed excess motion continuously. No instant velocity reset or teleport is used
+- Reset, relocation and mission retry clear both travel intent and nominal velocity. Aircraft changes preserve ongoing movement while changing the profile bound. Crash indication becomes zero immediately, including crashes flagged by the swept-solid check outside FlightState
 
-## Measured speed
+## Measured motion
 
-Measured using the actual FlightState update with 60 Hz frames and two physics substeps, neutral vertical input, constant full directional stick, open sea at 120 m AGL. Rounded values:
+60 Hz frames, two physics substeps, neutral vertical input, full forward stick,120 m AGL over open sea. Distances and actual speeds are world measurements. Indication is simulated independently.
 
-| Aircraft | Original bound | High bound | High speed after 8 s | Release distance in 2 s from settled high cruise | Reverse stop / forward travel |
-|---|---:|---:|---:|---:|---:|
-| WHOOP 75 | 16.00 m/s | 48.00 m/s | 43.072 m/s | 36.99 m | 2.62 s / 42.95 m |
-| MICRO 65 | 14.40 m/s | 43.20 m/s | 40.373 m/s | 28.81 m | 2.18 s / 32.24 m |
-| SCOUT 85 | 17.60 m/s | 52.80 m/s | 45.267 m/s | 45.59 m | 3.05 s / 55.20 m |
-| RACER 90 | 18.88 m/s | 56.64 m/s | 50.369 m/s | 44.74 m | 2.70 s / 52.29 m |
-| CINE 95 | 15.04 m/s | 45.12 m/s | 40.001 m/s | 36.05 m | 2.75 s / 42.58 m |
+WHOOP trajectory:
 
-All five aircraft shed over 85% of cruise speed within 2 seconds of releasing directional input. The longer braking distance at high speed is intentional and remains player-controlled. Maximum bounds apply to the full horizontal norm, including diagonals, climbing and boundary forces. A shrinking envelope can temporarily leave speed above the local low-flight bound while it decelerates, but never boosts past the overall high-flight bound under ordinary input.
+| Time | Actual speed | Indicated speed | Actual distance |
+|---|---:|---:|---:|
+|1 s|19.66 m/s|3.83 m/s|4.05 m|
+|2 s|166.38 m/s|7.29 m/s|95.02 m|
+|4 s|289.19 m/s|11.54 m/s|582.17 m|
+|8 s|318.72 m/s|14.83 m/s|1,825.26 m|
 
-## Actual inter-region travel comparison
+After 30 seconds of continuous high-air input:
 
-Compared with immutable baseline `87ecb79c000d17dc774be3a4983b0f81c9a0c378`. WHOOP 75, 120 Hz physics, starting at rest on a straight path. Each pair uses the same fixed world altitude, at least 110 m above the highest sampled terrain/near-path collision solid. Timing stops on crossing the destination plane. These figures **exclude initial climb, final descent and arrival braking**; no automatic altitude following or teleporting occurs during a measured trip.
-
-| Route | Distance | Before | After | Time saved |
+| Aircraft | Actual world bound | Nominal horizontal bound | Release: travel in 2 s / remaining speed | Reverse stop / forward overshoot |
 |---|---:|---:|---:|---:|
-| Airfield → East Harbor | 1,804 m | 115.93 s | 41.68 s | 64.0% |
-| Airfield → North Quarry | 2,442 m | 155.80 s | 54.97 s | 64.7% |
-| East Harbor → Lighthouse | 3,669 m | 232.49 s | 80.54 s | 65.4% |
-| Airfield → Offshore | 1,400 m | 90.68 s | 33.27 s | 63.3% |
-| Ridge Viaduct → West Wind Ridge | 992 m | 65.20 s | 24.77 s | 62.0% |
+|WHOOP 75|320.0 m/s|16.00 m/s|103.53 m /3.50 m/s|2.30 s /112.94 m|
+|MICRO 65|288.0 m/s|14.40 m/s|78.46 m /1.94 m/s|1.92 s /84.69 m|
+|SCOUT 85|352.0 m/s|17.60 m/s|131.69 m /5.46 m/s|2.68 s /145.33 m|
+|RACER 90|377.6 m/s|18.88 m/s|126.12 m /4.48 m/s|2.38 s /137.84 m|
+|CINE 95|300.8 m/s|15.04 m/s|101.39 m /3.65 m/s|2.40 s /110.98 m|
 
-At full open-air cruise an 8 km crossing is about 167 seconds before launch/braking overhead, rather than about 500 seconds; profile differences remain proportional. Flying low or repeatedly turning/descending still takes longer.
+Release removes more than 98% of established world speed in two seconds. Stopping distance is still meaningful: the player must slow for arrival. Nominal indicated speed must not be used to estimate stopping distance in the exaggerated-travel zone.
 
-## Verification and limits
+## Cross-region travel
 
-The new regression covers all five aircraft at low/high altitude and 30/60/144 Hz, real displacement, diagonal/keyboard parity, climbing/boundary limits, release/reverse/descent, precision input, overhead and forward solids, rising terrain, reset/retry/relocation/teleport, aircraft change and pause. Existing low-flight acceleration/profile tests now run over low open sea instead of using an arbitrary world Z of 500 m. Their original speed assertions are retained. Thirty seconds of mixed low-flight commands matched the immutable baseline bit-for-bit across all five aircraft at all three frame rates. Independent 10-second high-flight tests found a worst frame-rate position spread below 1 mm.
+WHOOP starts at rest, already at a fixed safe altitude at least 110 m above the sampled route terrain/near-path collision solids. The pilot holds a normalized straight direction; timing ends on crossing the destination plane. **Climb, descent and final arrival braking are excluded.** There is no automatic altitude following or teleporting during these runs.
 
-The complete existing mission and geometry suite remains required. Numerical route checks establish reachability and physics behavior; they do not prove human playability.
+| Route | Distance | Original normal flight | Previous 3× build | Current 20× travel |
+|---|---:|---:|---:|---:|
+|Airfield→East Harbor|1,804 m|115.93 s|41.68 s|7.93 s|
+|East Harbor→Lighthouse|3,669 m|232.49 s|80.54 s|13.77 s|
 
-This is assistance, **not automatic collision avoidance**. Terrain foresight is sampled with a conservative margin, not an analytic swept terrain collision test. Existing cosmetic vegetation/rocks and turbine blade animation remain outside collision-solid geometry. No WebGL flight, subjective hands-on control, physical touch or mobile FPS claim is made: the cloud browser GPU restriction still blocks those checks. Additional CPU work is conditional on sustained strong input above the clearance threshold; it scans 235 precomputed collision boxes per path (at most 470 box visits per substep), rejecting boxes below the terrain envelope and using early slab rejection on the others. At the fastest aircraft's ordinary maximum speed it queries at most 43 terrain points per substep: the current point plus 21 on each path when both paths differ. No additional draw calls, meshes, textures or camera effects are introduced; device CPU cost remains unmeasured.
+The retained baseline measurements are from `87ecb79c000d17dc774be3a4983b0f81c9a0c378`; the immediately preceding 3×/fixed-camera source is `53b030a3753de196fc3c054ac6b07b9d0aa49cfb`. Current trip numbers are reproduced by `test-fast-travel.mjs` using actual controls and collision checks.
+
+## Terrain, solids, turns and boundaries
+
+Look-ahead distance now derives from stopping distance: 20 m +0.25 s of current travel +v²/(2×recovery deceleration). Both intended direction and current momentum are considered. Terrain samples are at most 8 m apart with a 4 m margin. All 235 collision-solid boxes use continuous padded XY corridors, so thin obstacles do not vanish between terrain samples. Outward assistance is withdrawn before the existing outer-boundary spring; the spring itself is unchanged.
+
+Actual solid collision remains an exact swept segment after each physics substep. For fast steps exceeding 1 m horizontal displacement, terrain contact is additionally sampled at no more than 0.75 m intervals and the first detected contact bracket is bisected ten times. The flight stops at that contact. Ordinary low-speed steps retain the original terrain handling exactly. This guards high-speed crest crossing; it is still a sampled terrain sweep, not an analytic guarantee for arbitrary unmodelled geometry.
+
+Turning cancels or reduces travel assistance according to the directional alignment and yaw input. Momentum remains continuous while scaled braking restores close-range motion. The player remains responsible for choosing a clear path; this is not automatic collision avoidance. Existing cosmetic rocks, vegetation and animated turbine blades remain outside solid collision geometry.
+
+## Verification and performance limits
+
+The suites cover all five aircraft at low/high altitude and 30/60/144 Hz; real travel; normalized analog/keyboard diagonals; release/reverse/descent; map edges/corners; terrain/roof/crane/bridge forecasts; swept thin-solid and intervening-crest impacts; reset/retry/relocation/teleport; aircraft switching; virtual telemetry parity, altitude continuity and crash/reset lifecycle; and actual-speed mission arrival checks. Independent review additionally compared low flight bit-for-bit with the immutable baseline at 20/30/60/144 Hz in sea, land and boundary scenarios; ran 105 terrain approaches and 25 descent cases; and found no blocking defect. All existing mission regressions remain required.
+
+The HUD change is one speed-reference substitution. Camera behavior is separately integrated; camera motion and teleport detection must use actual world speed, never nominal indication. Actual travel can move up to 18.88 m per 50 ms rendered frame.
+
+At ordinary maximum speeds, clearance work is bounded by 97 terrain queries and 470 precomputed box visits per physics substep when both paths differ. Fast terrain contact adds up to 16 sample queries, plus up to 11 refinement/contact-height queries only when contact is detected. Low-flight steps skip these added terrain samples. Box-height and slab rejection reduce average work. There is no new drawing, mesh or texture cost from this physics/telemetry patch, but CPU cost is increased. Existing forest LOD updates after 12 m of movement and terrain/scene coverage also change more frequently during fast travel. Device CPU, GPU, streaming feel, physical touch and subjective playability remain unmeasured. Cloud WebGL restrictions still prevent a genuine visual/mobile FPS claim.

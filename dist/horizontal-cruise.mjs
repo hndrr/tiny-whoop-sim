@@ -1,4 +1,4 @@
-import {groundHeight,WORLD_OBJECTS} from './world.mjs';
+import {groundHeight,WORLD_OBJECTS,FLIGHT_HALF} from './world.mjs';
 import {SOLIDS} from './stage.mjs';
 
 // Deliberate open-air travel assistance, in metres and seconds. The original
@@ -6,16 +6,18 @@ import {SOLIDS} from './stage.mjs';
 export const HORIZONTAL_CRUISE=Object.freeze({
   startClearance:30,
   fullClearance:90,
-  speedMultiplier:3,
+  speedMultiplier:20,
+  responseMultiplier:2.4,
+  recoveryDamping:1.8,
   startStick:.8,
-  intentDelay:.65,
-  intentRamp:1.85,
-  lookAheadSeconds:2.5,
+  intentDelay:.4,
+  intentRamp:1.2,
+  lookAheadSeconds:.25,
   lookAheadMinimum:20,
   corridorPadding:8,
   terrainSampleSpacing:8,
   terrainLookAheadMargin:4,
-  recoveryDeceleration:18,
+  recoveryDeceleration:240,
 });
 const clamp=value=>Math.max(0,Math.min(1,value));
 const smooth=value=>{const t=clamp(value);return t*t*(3-2*t)};
@@ -40,12 +42,16 @@ export function cruiseClearance(state,directionX,directionY){
   let surface=groundHeight(state.x,state.y);
   if(state.z-surface<=HORIZONTAL_CRUISE.startClearance)return state.z-surface;
   const speed=Math.hypot(state.vx,state.vy);
-  const distance=HORIZONTAL_CRUISE.lookAheadMinimum+speed*HORIZONTAL_CRUISE.lookAheadSeconds;
+  const deceleration=HORIZONTAL_CRUISE.recoveryDeceleration*(state.profile?.acceleration??1);
+  const distance=HORIZONTAL_CRUISE.lookAheadMinimum+speed*HORIZONTAL_CRUISE.lookAheadSeconds+speed*speed/(2*deceleration);
   const paths=[[directionX,directionY]];
   // Also inspect momentum's path while steering across it.
   if(speed>1&&(state.vx*directionX+state.vy*directionY)/speed<.999)paths.push([state.vx/speed,state.vy/speed]);
   for(const [dx,dy] of paths){
     const endX=state.x+dx*distance,endY=state.y+dy*distance;
+    // Shed outward travel speed before the original soft boundary spring.
+    const edge=FLIGHT_HALF-300;
+    if((dx>0&&endX>edge)||(dx<0&&endX< -edge)||(dy>0&&endY>edge)||(dy<0&&endY< -edge))return 0;
     const samples=Math.ceil(distance/HORIZONTAL_CRUISE.terrainSampleSpacing);
     for(let i=1;i<=samples;i++)surface=Math.max(surface,groundHeight(state.x+dx*distance*i/samples,state.y+dy*distance*i/samples)+HORIZONTAL_CRUISE.terrainLookAheadMargin);
     for(const o of obstacles){

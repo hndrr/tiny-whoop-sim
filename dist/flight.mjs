@@ -1,4 +1,5 @@
 import {HORIZONTAL_CRUISE,resetCruise,stepCruise,rememberCruisePosition} from './horizontal-cruise.mjs';
+import {fastTerrainContact} from './fast-terrain-contact.mjs';
 import {stepVertical} from './vertical-flight.mjs';
 import {getFlightProfile} from './flight-profiles.mjs';
 import {controlInput} from './controls.mjs';
@@ -8,7 +9,8 @@ export class FlightState {
  constructor(){this.setAircraft('whoop75');this.reset()}
  setAircraft(id){this.aircraft=getFlightProfile(id).id;resetCruise(this)}
  get profile(){return getFlightProfile(this.aircraft)}
- reset(){resetCruise(this);Object.assign(this,{x:0,y:0,z:1.2,vx:0,vy:0,vz:0,speed:0,throttle:.5,pitch:0,roll:0,heading:0,crashed:false,paused:true,gate:0,elapsed:0,complete:false,finishTime:null,explore:false,region:0,ditched:false,practiceEnabled:true,practiceCount:0,ringFlash:GATES.map(()=>0),ringLatched:GATES.map(()=>false),ringCooldown:GATES.map(()=>0)})}
+ get indicatedSpeed(){return this.crashed?0:Math.hypot(this.indicatedVx,this.indicatedVy,this.vz)}
+ reset(){resetCruise(this);Object.assign(this,{x:0,y:0,z:1.2,vx:0,vy:0,vz:0,speed:0,indicatedVx:0,indicatedVy:0,throttle:.5,pitch:0,roll:0,heading:0,crashed:false,paused:true,gate:0,elapsed:0,complete:false,finishTime:null,explore:false,region:0,ditched:false,practiceEnabled:true,practiceCount:0,ringFlash:GATES.map(()=>0),ringLatched:GATES.map(()=>false),ringCooldown:GATES.map(()=>0)})}
  relocate(index){const r=REGIONS[index];if(!r)throw Error("Unknown area");this.reset();[this.x,this.y,this.z]=regionSpawn(index);this.region=index;this.explore=index!==0}
  // Forgiving, bidirectional practice: retain the original 1.6 m acceptance radius.
  // A swept segment prevents fast passes from skipping a ring between frames.
@@ -59,9 +61,21 @@ export class FlightState {
   const neutral=Math.max(0,1-stick/.12);
   const requestedX=cos*input.roll+sin*-input.pitch,requestedY=sin*input.roll-cos*-input.pitch;
   const cruiseBlend=stepCruise(this,input,stick,stickLength?requestedX/stickLength:0,stickLength?requestedY/stickLength:0,dt);
-  force*=1+(HORIZONTAL_CRUISE.speedMultiplier-1)*cruiseBlend;
+  const nominalForce=force;
+  const travelResponse=1+(HORIZONTAL_CRUISE.responseMultiplier-1)*cruiseBlend;
+  const targetLimit=16*profile.topSpeed*(1+(HORIZONTAL_CRUISE.speedMultiplier-1)*cruiseBlend);
+  force*=(1+(HORIZONTAL_CRUISE.speedMultiplier-1)*cruiseBlend)*travelResponse;
+  const recovery=Math.max(0,Math.min(1,(speed-targetLimit)/(32*profile.topSpeed)));
   const opposition=speed&&stickLength?Math.max(0,-(this.vx*requestedX+this.vy*requestedY)/(speed*stickLength)):0;
-  const damping=(.45-.115*cruise+.75*neutral+.5*opposition*Math.min(1,stick/.12))*profile.acceleration/profile.topSpeed;
+  const damping=((.45-.115*cruise+.75*neutral+.5*opposition*Math.min(1,stick/.12))*travelResponse+HORIZONTAL_CRUISE.recoveryDamping*recovery*recovery*(3-2*recovery))*profile.acceleration/profile.topSpeed;
+  // Virtual indicated speed follows the unscaled drone controls, independently
+  // of open-world travel. Never feed this value into collisions or missions.
+  const indicated=Math.hypot(this.indicatedVx,this.indicatedVy);
+  const indicatedOpposition=indicated&&stickLength?Math.max(0,-(this.indicatedVx*requestedX+this.indicatedVy*requestedY)/(indicated*stickLength)):0;
+  const indicatedDamping=(.45-.115*cruise+.75*neutral+.5*indicatedOpposition*Math.min(1,stick/.12))*profile.acceleration/profile.topSpeed;
+  const indicatedDrag=Math.exp(-dt*indicatedDamping),indicatedImpulse=(1-indicatedDrag)/indicatedDamping;
+  this.indicatedVx=this.indicatedVx*indicatedDrag+directionX*nominalForce*indicatedImpulse;
+  this.indicatedVy=this.indicatedVy*indicatedDrag+directionY*nominalForce*indicatedImpulse;
   // Exact constant-force drag integration avoids frame-dependent damping.
   const drag=Math.exp(-dt*damping),impulse=(1-drag)/damping;
   this.vx=this.vx*drag+directionX*force*impulse;
@@ -70,20 +84,24 @@ export class FlightState {
   this.vz=vertical.vz;
   const edge=boundaryAcceleration(this.x,this.y);
   this.vx+=edge[0]*dt;this.vy+=edge[1]*dt;
+  this.indicatedVx+=edge[0]*dt;this.indicatedVy+=edge[1]*dt;
+  const indicatedHorizontal=Math.hypot(this.indicatedVx,this.indicatedVy),indicatedLimit=16*profile.topSpeed;
+  if(indicatedHorizontal>indicatedLimit){this.indicatedVx*=indicatedLimit/indicatedHorizontal;this.indicatedVy*=indicatedLimit/indicatedHorizontal}
   // One horizontal norm bound, including climb and boundary forces. When the
   // open-air envelope shrinks, shed existing travel speed over time rather
   // than snapping velocity back to the close-range cap in a single frame.
   const horizontalSpeed=Math.hypot(this.vx,this.vy);
-  const targetLimit=16*profile.topSpeed*(1+(HORIZONTAL_CRUISE.speedMultiplier-1)*cruiseBlend);
   const limit=Math.max(targetLimit,speed-HORIZONTAL_CRUISE.recoveryDeceleration*profile.acceleration*dt);
   if(horizontalSpeed>limit){this.vx*=limit/horizontalSpeed;this.vy*=limit/horizontalSpeed}
   this.x+=(oldVx+this.vx)*.5*dt;this.y+=(oldVy+this.vy)*.5*dt;this.z+=vertical.dz;
+  const contact=fastTerrainContact(before,[this.x,this.y,this.z]);
+  if(contact){[this.x,this.y,this.z]=contact;this.crashed=true;this.ditched=isOverWater(this.x,this.y);this.vz=0}
   this.speed=Math.hypot(this.vx,this.vy,this.vz);
   const floor=groundHeight(this.x,this.y)+.08;
   if(this.z<floor){
    if(isOverWater(this.x,this.y)){this.crashed=true;this.ditched=true}
    if(Math.abs(this.vz)>3||this.speed>5)this.crashed=true;
-   this.z=floor;this.vz=0;this.vx*=.9;this.vy*=.9;
+   this.z=floor;this.vz=0;this.vx*=.9;this.vy*=.9;this.indicatedVx*=.9;this.indicatedVy*=.9;
   }
   rememberCruisePosition(this);
   if(practice)this.updatePractice(before,dt);
