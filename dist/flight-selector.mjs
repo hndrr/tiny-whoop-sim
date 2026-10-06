@@ -49,8 +49,8 @@ export function createFlightSelector({renderer,captureStage,getSelection,getMode
   }));gradient.frustumCulled=false;gradient.renderOrder=-100;group.add(gradient);
   const shadow=new T.Mesh(new T.PlaneGeometry(.24,.24),new T.ShaderMaterial({
    transparent:true,depthWrite:false,
-   vertexShader:'varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-   fragmentShader:'varying vec2 vUv; void main(){float r=length((vUv-0.5)*2.0);gl_FragColor=vec4(0.02,0.035,0.04,0.32*(1.0-smoothstep(0.0,1.0,r)));}'
+   vertexShader:'#include <common>\n#include <logdepthbuf_pars_vertex>\nvarying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);\n#include <logdepthbuf_vertex>\n}',
+   fragmentShader:'#include <logdepthbuf_pars_fragment>\nvarying vec2 vUv; void main(){\n#include <logdepthbuf_fragment>\nfloat r=length((vUv-0.5)*2.0);gl_FragColor=vec4(0.02,0.035,0.04,0.32*(1.0-smoothstep(0.0,1.0,r)));}'
   }));shadow.position.z=-.021;group.add(shadow);return group;
  }
 
