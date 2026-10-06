@@ -6,7 +6,9 @@ import {MISSION_STAGES,objectiveFeedback} from './dist/precision-missions.mjs';
 import {i18n} from './dist/i18n.mjs';
 
 // Real mission/UI contracts with a small DOM model. Native browser geometry,
-// top-layer focus trapping and rendered pixels are checked separately in browser.
+// top-layer focus trapping and rendered pixels still require browser validation.
+const closeEvents=[];
+function flushCloseEvents(){for(const dispatch of closeEvents.splice(0))dispatch()}
 class Element {
  constructor(tag,document){this.tagName=tag.toUpperCase();this.document=document;this.children=[];this.parentNode=null;this.attrs={};this.style={};this.hidden=false;this.open=false;this.focusCount=0;this.classList={toggle(){}}}
  set id(value){this.attrs.id=value}get id(){return this.attrs.id}
@@ -23,7 +25,7 @@ class Element {
  focus(){this.focusCount++;this.document.activeElement=this}
  blur(){if(this.document.activeElement===this)this.document.activeElement=this.document.body}
  showModal(){assert.equal(this.open,false);this.open=true;this.showCount=(this.showCount||0)+1;this.setAttribute('open','');this.previousFocus=this.document.activeElement;this.querySelectorAll('button').find(button=>!button.hidden)?.focus()}
- close(){if(!this.open)return;const focused=this.contains(this.document.activeElement);this.open=false;this.removeAttribute('open');if(focused)this.previousFocus?.focus()}
+ close(){if(!this.open)return;const focused=this.contains(this.document.activeElement);this.open=false;this.removeAttribute('open');if(focused)this.previousFocus?.focus();closeEvents.push(()=>this.fire('close',{bubbles:false}))}
  dispatch(event){event.target??=this;this[`on${event.type}`]?.(event);if(event.bubbles&&!event.stopped)this.parentNode?.dispatch(event);return event}
  fire(type,values={}){return this.dispatch({type,bubbles:true,defaultPrevented:false,stopped:false,preventDefault(){this.defaultPrevented=true},stopPropagation(){this.stopped=true},...values})}
  click(){return this.fire('click',{detail:0})}
@@ -84,18 +86,31 @@ try {
   }
   assert.equal(flightKeys,0);assert.equal(actions.length,calls);
   const cancelled=dialog.fire('cancel');assert(cancelled.defaultPrevented);assert(cancelled.stopped);assert(dialog.open);assert.equal(actions.length,calls);
+  for(const closeBeforeRender of [true,false,true,false]){
+   dialog.close();dialog.close();assert(!dialog.open);assert(state.paused);assert.equal(actions.length,calls);
+   if(closeBeforeRender)flushCloseEvents();
+   ui.render();assert(dialog.open);assert(!dialog.hidden);assert.equal(document.activeElement,stage===MISSION_STAGES.length-1?replay:next);
+   const reopened=dialog.showCount,recoveredClears=clears;
+   flushCloseEvents();dialog.fire('close',{bubbles:false});ui.render();
+   assert(dialog.open);assert(!dialog.hidden);assert.equal(dialog.showCount,reopened,'stale close events cannot invalidate a reopened modal');assert.equal(clears,recoveredClears);
+   for(let repeat=0;repeat<3;repeat++){const cancel=dialog.fire('cancel');assert(cancel.defaultPrevented);ui.render()}
+   assert.equal(dialog.showCount,reopened);assert.equal(JSON.stringify({state,mission:ui.mission}),snapshot,'native dismissal never resumes, restarts or advances');assert.equal(actions.length,calls);
+  }
+  replay.focus();
   dialog.click();assert.equal(actions.length,calls,'backdrop/surface click never advances');
   for(const locale of ['ja','en']){
    i18n.setLanguage(locale);ui.render();assert.equal(JSON.stringify({state,mission:ui.mission}),snapshot);
    assert.equal($('missionCompletionSubtitle').textContent,i18n.t(stage===MISSION_STAGES.length-1?'allStagesComplete':'stageComplete',{stage:stage+1,title:i18n.t(ui.mission.stage.title)}));
    assert.equal(next.textContent,i18n.t('nextStage'));assert.equal(replay.textContent,i18n.t('replayMission'));assert.equal(free.textContent,i18n.t('modeFree'));assert.equal(document.activeElement,replay);
   }
-  if(stage<MISSION_STAGES.length-1){next.click();assert.equal(actions.at(-1),'next');assert.equal(ui.mission.stageIndex,stage+1);assert(dialog.hidden);assert(!dialog.open);assert.equal(document.activeElement,$('pause'));const count=actions.length;next.click();assert.equal(actions.length,count,'double click does not advance again')}
+  if(stage<MISSION_STAGES.length-1){next.click();assert.equal(actions.at(-1),'next');assert.equal(ui.mission.stageIndex,stage+1);assert(dialog.hidden);assert(!dialog.open);assert.equal(document.activeElement,$('pause'));const count=actions.length;next.click();flushCloseEvents();ui.render();assert(dialog.hidden);assert(!dialog.open);assert.equal(actions.length,count,'double click and queued close do not advance again')}
  }
  const finalCalls=actions.length;next.click();assert.equal(actions.length,finalCalls);assert(dialog.open,'hidden final-stage Next is a no-op');
  replay.click();assert.equal(actions.at(-1),'replay');assert.equal(ui.mission.stageIndex,MISSION_STAGES.length-1);assert.equal(ui.mission.index,0);assert(!ui.mission.done);assert(dialog.hidden);assert.equal(document.activeElement,$('pause'));
+ const replayCalls=actions.length;replay.click();flushCloseEvents();ui.render();assert.equal(actions.length,replayCalls);assert(dialog.hidden);assert(!dialog.open);
  finishStage();$('retryDispatch').click();assert.equal(actions.at(-1),'retry');assert(dialog.hidden);assert(!dialog.open);assert.equal(document.activeElement,$('pause'));
  finishStage();free.click();assert.equal(actions.at(-1),'free');assert(!ui.mission.active);assert(dialog.hidden);assert(!dialog.open);assert.equal(document.activeElement,$('pause'));
+ const freeCalls=actions.length;free.click();flushCloseEvents();ui.render();assert.equal(actions.length,freeCalls);assert(dialog.hidden);assert(!dialog.open);
  ui.mission.start(state);finishStage();ui.mission.leave();ui.render();assert(dialog.hidden);assert(!dialog.open);assert.equal(document.activeElement,$('pause'));
  const css=readFileSync(new URL('./dist/style.css',import.meta.url),'utf8');
  assert.match(css,/#missionCompletion::backdrop/);assert.match(css,/#missionCongratulations\{font-size:clamp\(24px,6\.4vw,100px\)/);assert.match(css,/#nextMissionStage\[hidden\]\{display:none\}/);

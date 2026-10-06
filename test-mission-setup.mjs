@@ -336,6 +336,15 @@ try {
   controller.precision.render(true);assert.equal(state.paused,true);assert.equal($('missionCompletion').open,true);assert.equal(keys.size,0);assert.deepEqual(axes,{pitch:0,roll:0,throttle:0,yaw:0});
  }
  completeStage();const completePosition=[state.x,state.y,state.z];controller.toggle();assert.equal(state.paused,true);assert.deepEqual([state.x,state.y,state.z],completePosition);
+ const completion=$('missionCompletion'),completedSnapshot=liveSnapshot();
+ for(const deliverBeforeRender of [false,true,false,true]){
+  completion.close();completion.close();if(deliverBeforeRender)await flushFrames();
+  keys.add('KeyW');axes.throttle=1;controller.precision.render(true);await flushFrames();
+  assert(completion.open);assert(!completion.hidden);assert.equal(document.activeElement,$('nextMissionStage'));assert.equal(keys.size,0);assert.equal(axes.throttle,0);
+  completion.fire('close');controller.toggle();controller.precision.render(true);
+  assert(completion.open);assert.equal(liveSnapshot(),completedSnapshot,'external completion close preserves real controller and paused mission state');
+  for(let repeat=0;repeat<3;repeat++){completion.escape();assert(completion.open);assert.equal(liveSnapshot(),completedSnapshot)}
+ }
  $('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,1);assert.equal(controller.mission.done,false);assert.equal(state.paused,false);assert.equal(state.aircraft,'cine95');
  completeStage();$('replayMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,1);assert.equal(controller.mission.index,0);assert.equal(state.paused,false);
  completeStage();$('nextMissionStage').click();await flushFrames();assert.equal(controller.mission.stageIndex,2);assert.equal(state.paused,false);

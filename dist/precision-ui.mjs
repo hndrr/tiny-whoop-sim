@@ -19,6 +19,10 @@ export function setupPrecision({scene,state,start,leave,retry,next=()=>{},replay
  completion.onkeydown=event=>event.stopPropagation();completion.onkeyup=event=>event.stopPropagation();
  // Completion is a deliberate choice. Escape cannot silently resume the drone.
  completion.oncancel=event=>{event.preventDefault();event.stopPropagation()};
+ const completionIsOpen=()=>completion.open||completion.getAttribute('open')!==null&&completion.getAttribute('open')!==undefined;
+ // Native close events can arrive after another render has reopened the modal.
+ // Only reconcile a genuinely closed dialog; never treat closing as a choice.
+ completion.onclose=()=>{if(!completionIsOpen())hideCompletion()};
  function hideCompletion(){
   if(!completionVisible)return;
   completionVisible=false;clearInputs();
@@ -28,14 +32,16 @@ export function setupPrecision({scene,state,start,leave,retry,next=()=>{},replay
   completion.hidden=true;
   // close() may restore an old settings control that is now hidden. Prefer the
   // always-visible ARM/PAUSE control, before the chosen callback opens anything.
-  if(focusWasInside||!document.activeElement||document.activeElement===document.body){
+  if(focusWasInside||!document.activeElement||document.activeElement===document.body||document.activeElement.closest?.('[hidden]')){
    const target=$('pause')||previousFocus;
    if(target&&!target.hidden&&!target.closest?.('[hidden]'))target.focus?.({preventScroll:true});
   }
   previousFocus=null;
  }
  function showCompletion(){
-  if(completionVisible)return;
+  if(completionVisible&&completionIsOpen())return;
+  // Recover even before the queued native close event has been delivered.
+  if(completionVisible)hideCompletion();
   completionVisible=true;previousFocus=document.activeElement;clearInputs();completion.hidden=false;
   if(completion.showModal)completion.showModal();else completion.setAttribute('open','');
   (mission.hasNext?$('nextMissionStage'):$('replayMissionStage')).focus?.({preventScroll:true});
