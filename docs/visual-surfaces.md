@@ -47,3 +47,16 @@ Concrete has a white material multiplier, while the original natural ground comb
 `test-ground-output.mjs` runs the actual grass generator and checks all eight region spawn locations and neighboring underlying terrain/water paths. These are material-path and transfer-function tests, not visibility ray casts or screenshots: built surfaces can cover underlying terrain. Offshore uses the ocean shader; natural harbor/lighthouse/windfarm ground uses the darker meadow vertex hue; elevated viaduct/village/quarry terrain uses the ridge hue. Concrete's albedo and white multiplier are unchanged.
 
 At an explicitly representative diffuse factor of 0.45, the old meadow hue × grass albedo produces display codes [3,5,1] at 100%, or [5,9,1] even at 180%. Neutral detail plus correct display transfer produces [59,70,41] at 100%. These numeric examples explain loss of detail; they are not measured scene pixels or a promise that every lit/shadowed surface has that luminance. Global lights/exposure were not increased.
+
+## FPV signal after the ground correction
+
+User feedback on the private build found the brighter corrected scene too clean. The painted images were not deployed at that point. The prior ground fix kept the old analog effect constants, but the same absolute noise is less prominent over a brighter scene. This increment tunes only the FPV signal, independently from any low-resolution painted texture style:
+
+- Chromatic sample offset: .0013 → .0022 UV
+- Horizontal softening blend: .16 → .22, still only in FPV
+- Display-space grain amplitude: .026 → .065 (approximately ±8.3 display code levels before scan modulation at100% gain)
+- Scan modulation: previously0…−1.5%; now±3% around a mean of1, avoiding a new global darkening
+
+Barrel distortion .095, vignette .16, the576-pixel FPV target-height cap, and chase resolution remain unchanged. The scene still receives one correct sRGB display conversion before the analog signal. Brightness remains after that signal. Chase does not receive noise, chroma shifts, softening, scanlines or vignette. No PS-style full-screen pixel filter is introduced.
+
+`test-fpv-signal.mjs` reads the actual shader constants and checks FPV guards, clean chase, centered modulation and preserved output order. These numerical/source checks do not establish that the user will prefer the new analog feel; private-device feedback remains necessary. Terrain's neutral-detail fix and global lights/exposure are unchanged.
