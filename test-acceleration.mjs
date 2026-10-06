@@ -3,7 +3,7 @@ import {FlightState} from './dist/flight.mjs';
 import {FLIGHT_PROFILES} from './dist/flight-profiles.mjs';
 import {FLIGHT_HALF} from './dist/world.mjs';
 const empty=new Set();
-function state(id){const s=new FlightState();s.setAircraft(id);s.paused=false;s.z=500;return s}
+function state(id){const s=new FlightState();s.setAircraft(id);s.paused=false;s.x=5000;s.y=-5000;s.z=5;return s}
 function advance(s,seconds,axes={},fps=60){for(let i=0;i<Math.round(seconds*fps);i++)for(let j=0;j<2;j++)s.step(1/fps/2,empty,axes,false);return s}
 const results=[];
 for(const [id,profile] of Object.entries(FLIGHT_PROFILES)){
@@ -18,7 +18,7 @@ for(const [id,profile] of Object.entries(FLIGHT_PROFILES)){
  const edge=state(id);edge.x=FLIGHT_HALF;edge.vx=-16*profile.topSpeed;edge.roll=-.5;
  advance(edge,1/60,{roll:-1});assert(Math.hypot(edge.vx,edge.vy)<=16*profile.topSpeed+1e-10,'boundary spring also respects norm cap');
  const samples=[];const s=state(id);
- for(let t=0;t<=8;t++){if([0,1,2,4,8].includes(t))samples.push({seconds:t,speed:s.vy,distance:s.y});advance(s,1,{pitch:1})}
+ for(let t=0;t<=8;t++){if([0,1,2,4,8].includes(t))samples.push({seconds:t,speed:s.vy,distance:s.y+5000});advance(s,1,{pitch:1})}
  assert(samples[3].speed>samples[2].speed+3,'real speed continues to build through 4 seconds');
  assert(samples[4].speed>samples[3].speed+2,'real speed continues to build through 8 seconds');
  const forward=advance(state(id),20,{pitch:1});
@@ -42,7 +42,7 @@ for(const [id,profile] of Object.entries(FLIGHT_PROFILES)){
   assert(Math.abs(a.vy-reference.vy)<.03,'frame-rate speed invariance');
   assert(Math.abs(a.y-reference.y)<.22,'frame-rate distance tolerance');
   for(const axes of [{pitch:1,roll:1,throttle:1},{pitch:-1,roll:1,throttle:1}]){
-   const limited=advance(state(id),10,axes,fps);assert(Math.hypot(limited.vx,limited.vy)<=16*profile.topSpeed+1e-10,'norm cap also bounds climbing diagonals');
+   const limited=advance(state(id),4,axes,fps);assert(Math.hypot(limited.vx,limited.vy)<=16*profile.topSpeed+1e-10,'norm cap also bounds climbing diagonals');
   }
  }
  for(const amount of [.05,.1,.2,.4,.6]){

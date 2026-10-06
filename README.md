@@ -146,3 +146,7 @@ Strong right-stick input sustains real acceleration longer, while gentle inputs 
 ## Faceted mountain scenery
 
 Existing ridges use face-based lighting and coherent distant colors with a continuous earth palette. Physical heights, region plateaus, terrain stitching, sky/fog and FPV effects remain unchanged. See [geometry checks, memory cost and unverified device limits](docs/faceted-terrain.md). No new mountain backdrop, triangle count or draw call is added; GPU work and geometry storage can increase.
+
+## High-altitude travel
+
+Holding a strong directional input in clear high air smoothly builds up to 3× actual horizontal speed (WHOOP 75: up to 48 m/s), shortening long inter-region trips. The blend uses clearance above terrain/sea and structures, with look-ahead checks; low flight retains its precise handling. Releasing the stick, descending or braking exits the assistance while speed decays continuously. There is no extra key or camera/FOV trick. See [travel timings, braking distances and verification limits](docs/high-altitude-cruise.md).

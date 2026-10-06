@@ -1,5 +1,7 @@
 # Progressive horizontal flight tuning
 
+These measurements describe the retained close-range model. Clear high-air travel now adds a separate [smooth cruise envelope](high-altitude-cruise.md); the low-flight values below are unchanged.
+
 This is arcade tuning, not a hardware simulation. The initial report of weak acceleration was not an immediate hard-cap bug: previous full-stick motion used constant thrust against linear drag, so its acceleration faded substantially after four seconds. The new curve reduces drag smoothly only above 65% right-stick deflection. Speed and distance are real physics values, not HUD scaling or camera effects. The 12%–65% input range retains familiar gentle response; near-neutral self-level assistance brakes drift, and opposing input provides braking before reversal.
 
 The same circular right-stick envelope applies to keyboard, mouse, touch, physics and indicators. All aircraft share a horizontal speed-norm bound including climbing and boundary forces. Relative acceleration, turn response and speed tuning are unchanged. Vertical/descent behavior and missions were not modified.

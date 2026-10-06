@@ -6,7 +6,7 @@ import {bindSticks} from './dist/controls.mjs';
 assert.deepEqual(VEHICLES.map(v=>v.id),Object.keys(FLIGHT_PROFILES));
 for(const id of ['invalid','__proto__','toString',null,undefined])assert.equal(getFlightProfile(id),FLIGHT_PROFILES.whoop75);
 function fly(id,seconds,dt=1/120,keys=new Set(),axes={pitch:1}){
- const s=new FlightState();s.setAircraft(id);s.paused=false;s.z=500;
+ const s=new FlightState();s.setAircraft(id);s.paused=false;s.x=5000;s.y=-5000;s.z=5;
  for(let i=0;i<Math.round(seconds/dt);i++)s.step(dt,keys,axes);
  return s;
 }
@@ -19,7 +19,7 @@ for(const [id,p] of Object.entries(FLIGHT_PROFILES)){
  const a=fly(id,2,1/120,new Set(['ArrowUp','KeyA','KeyW']),{}),b=fly(id,2,1/120,new Set(),{pitch:1,yaw:1,throttle:1});assert.deepEqual(a,b,'keyboard and analog profile: '+id);
  const stable=fly(id,3,1/120),coarse=fly(id,3,1/40);assert(Math.abs(stable.y-coarse.y)<.25,'frame-rate position tolerance: '+id);assert(Math.abs(stable.vy-coarse.vy)<.1);
  const reset=new FlightState();reset.setAircraft(id);reset.reset();assert.equal(reset.aircraft,id);reset.relocate(1);assert.equal(reset.aircraft,id);
- const neutral=fly(id,2,1/120,new Set(),{});assert.equal(neutral.z,500);assert.equal(neutral.speed,0);
+ const neutral=fly(id,2,1/120,new Set(),{});assert.equal(neutral.z,5);assert.equal(neutral.speed,0);
 }
 const base=results.whoop75;
 for(const [id,p] of Object.entries(FLIGHT_PROFILES)){
