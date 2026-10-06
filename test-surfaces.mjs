@@ -20,7 +20,7 @@ for(let face=0;face<6;face++){const i=face*4,nx=Math.abs(normals.getX(i)),ny=Mat
 const profiler=createRenderProfile(3);assert.deepEqual(profiler.snapshot(),{samples:0});for(const frameMs of [16,20,30,40,50])profiler.record({frameMs,renderSubmitMs:2,sceneCalls:10,postCalls:1,triangles:100,textures:5,geometries:4});assert.equal(profiler.snapshot().samples,3);assert.equal(profiler.snapshot().frameMsP50,40);assert.equal(profiler.snapshot().latest.frameMs,50);profiler.record({frameMs:10000});assert.equal(profiler.snapshot().samples,3);assert.equal(profiler.snapshot().stallsOver250Ms,1);profiler.record({frameMs:NaN});assert.equal(profiler.snapshot().samples,3);profiler.reset();assert.equal(profiler.snapshot().samples,0);
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
 assert(main.includes("get('colorPipeline')==='1'&&renderer.extensions.has('EXT_color_buffer_float')"));
-assert(main.includes('type:colorManaged?T.HalfFloatType:T.UnsignedByteType'));
+assert(main.includes('createFlightRenderTarget({hdr:colorManaged})'));
 assert(main.includes("${colorManaged?'\\n#include <tonemapping_fragment>\\n':''}\\n#include <colorspace_fragment>\\n"));
 assert.equal((main.match(/#include <tonemapping_fragment>/g)||[]).length,1);assert.equal((main.match(/#include <colorspace_fragment>/g)||[]).length,1);
 assert(main.includes('col*=inside;col*=brightness;gl_FragColor=vec4(col,1.);'),'brightness remains feed-only and precedes opt-in output transform');

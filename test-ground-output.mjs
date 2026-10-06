@@ -1,3 +1,4 @@
+import {createFlightRenderTarget} from './dist/render-color.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {REGIONS,regionSpawn,terrainHeight,SEA_LEVEL} from './dist/world.mjs';
@@ -19,8 +20,8 @@ assert.equal((post.match(/#include <colorspace_fragment>/g)||[]).length,1);
 assert(post.indexOf('#include <colorspace_fragment>')<post.indexOf('float noise='),'analog noise stays in display space rather than being amplified by sRGB');
 assert(post.indexOf('float noise=')<post.indexOf('col*=brightness'),'brightness retains display-space feed gain');
 assert(main.includes('renderer.outputColorSpace=T.SRGBColorSpace'));
-assert(main.includes('type:colorManaged?T.HalfFloatType:T.UnsignedByteType'),'default remains RGBA8, with no HDR-memory increase');
-assert.equal(new T.WebGLRenderTarget(1,1).texture.colorSpace,T.NoColorSpace,'the flight feed is linear storage, not already display encoded');
+assert(main.includes('createFlightRenderTarget({hdr:colorManaged})'),'default remains RGBA8, with no HDR-memory increase');
+assert.equal(createFlightRenderTarget().texture.colorSpace,T.SRGBColorSpace,'default storage uses hardware sRGB encode/decode; samples remain linear');
 assert(T.ShaderChunk.colorspace_fragment.includes('linearToOutputTexel'),'the actual pinned output chunk performs output transfer');
 const linear=rgb=>new T.Color().setRGB(...rgb.map(x=>x/255),T.SRGBColorSpace);
 const oldMap=linear([120,131,77]),newMap=linear([222,222,222]);
