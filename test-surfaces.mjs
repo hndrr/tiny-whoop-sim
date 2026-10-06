@@ -21,7 +21,7 @@ const profiler=createRenderProfile(3);assert.deepEqual(profiler.snapshot(),{samp
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
 assert(main.includes("get('colorPipeline')==='1'&&renderer.extensions.has('EXT_color_buffer_float')"));
 assert(main.includes('type:colorManaged?T.HalfFloatType:T.UnsignedByteType'));
-assert(main.includes("${colorManaged?'\\n#include <tonemapping_fragment>\\n#include <colorspace_fragment>\\n':''}"));
+assert(main.includes("${colorManaged?'\\n#include <tonemapping_fragment>\\n':''}\\n#include <colorspace_fragment>\\n"));
 assert.equal((main.match(/#include <tonemapping_fragment>/g)||[]).length,1);assert.equal((main.match(/#include <colorspace_fragment>/g)||[]).length,1);
 assert(main.includes('col*=inside;col*=brightness;gl_FragColor=vec4(col,1.);'),'brightness remains feed-only and precedes opt-in output transform');
 assert(main.includes('for(let i=0;i<256*256;i++)rand();'),'unchanged seeded scenery after replacing old asphalt texture');

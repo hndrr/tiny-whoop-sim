@@ -70,7 +70,7 @@ Verification: Node physics, normalized controls, pointer lifecycle, airframe geo
 
 ## Video brightness
 
-The always-visible BRIGHTNESS slider adjusts the 3D flight video in both FPV and chase views from 60% to 180%, without changing HTML telemetry or control brightness. 100% preserves the original look; the adjacent reset button restores it. The value is validated and remembered locally when browser storage is available. Setup thumbnails keep their original scene exposure.
+The always-visible BRIGHTNESS slider adjusts the 3D flight video in both FPV and chase views from 60% to 180%, without changing HTML telemetry or control brightness. 100% is the default feed gain; the adjacent reset button restores it. The value is validated and remembered locally when browser storage is available. Setup thumbnails keep their original scene exposure.
 
 ## Handling and controlled descent
 
@@ -131,7 +131,7 @@ The inspector reuses the flight renderer, one render target, readback buffer and
 
 ## Lightweight surface pass
 
-Airfield asphalt and concrete use original 256px periodic albedo/detail maps generated locally at startup, metre-scaled UVs, and shared geometry. Roof/steel/glass share one small static analytic-sky reflection with a safe unsupported-device fallback. No stock/AI image assets or new dependencies are required. Flight mechanics and default feed brightness/output remain unchanged. See [surface authorship, memory budget and validation plan](docs/visual-surfaces.md). The opt-in `?profile=1` diagnostic has no on-screen UI; `?colorPipeline=1` is a separately gated, unverified color-output experiment. Real-device WebGL/touch/FPS verification remains pending.
+Airfield asphalt and concrete use original 256px periodic albedo/detail maps generated locally at startup, metre-scaled UVs, and shared geometry. Roof/steel/glass share one small static analytic-sky reflection with a safe unsupported-device fallback. No stock/AI image assets or new dependencies are required. Flight mechanics and brightness controls remain unchanged. The default flight feed now performs its required sRGB display conversion; natural ground uses neutral detail to avoid compounded dark tints. See [surface authorship, memory budget and validation plan](docs/visual-surfaces.md). The opt-in `?profile=1` diagnostic has no on-screen UI; `?colorPipeline=1` is a separately gated, unverified HDR/ACES experiment. Real-device WebGL/touch/FPS verification remains pending.
 
 ## Authored forest silhouettes
 
