@@ -1,4 +1,4 @@
-import {HORIZONTAL_CRUISE,resetCruise,stepCruise,rememberCruisePosition} from './horizontal-cruise.mjs';
+import {HORIZONTAL_CRUISE,resetCruise,stepCruise,limitCruiseAcceleration,rememberCruisePosition} from './horizontal-cruise.mjs';
 import {fastTerrainContact} from './fast-terrain-contact.mjs';
 import {stepVertical} from './vertical-flight.mjs';
 import {getFlightProfile} from './flight-profiles.mjs';
@@ -93,6 +93,7 @@ export class FlightState {
   const horizontalSpeed=Math.hypot(this.vx,this.vy);
   const limit=Math.max(targetLimit,speed-HORIZONTAL_CRUISE.recoveryDeceleration*profile.acceleration*dt);
   if(horizontalSpeed>limit){this.vx*=limit/horizontalSpeed;this.vy*=limit/horizontalSpeed}
+  limitCruiseAcceleration(this,speed,dt);
   this.x+=(oldVx+this.vx)*.5*dt;this.y+=(oldVy+this.vy)*.5*dt;this.z+=vertical.dz;
   const contact=fastTerrainContact(before,[this.x,this.y,this.z]);
   if(contact){[this.x,this.y,this.z]=contact;this.crashed=true;this.ditched=isOverWater(this.x,this.y);this.vz=0}

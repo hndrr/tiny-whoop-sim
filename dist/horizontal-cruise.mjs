@@ -9,9 +9,9 @@ export const HORIZONTAL_CRUISE=Object.freeze({
   speedMultiplier:20,
   responseMultiplier:2.4,
   recoveryDamping:1.8,
-  startStick:.8,
-  intentDelay:.4,
-  intentRamp:1.2,
+  startStick:.45,
+  travelAcceleration:90,
+  travelJerk:110,
   lookAheadSeconds:.25,
   lookAheadMinimum:20,
   corridorPadding:8,
@@ -63,27 +63,37 @@ export function cruiseClearance(state,directionX,directionY){
   return state.z-surface;
 }
 export function resetCruise(state){
-  state.cruiseHold=0;state.cruiseBlend=0;
-  state.cruiseDirectionX=0;state.cruiseDirectionY=0;
-  state.cruisePosition=null;
+  state.cruiseBlend=0;state.cruiseAcceleration=0;state.cruisePosition=null;
 }
 export function stepCruise(state,input,stick,directionX,directionY,dt){
-  // Resets and mission retries clear this explicitly. Position discontinuities
-  // also discard intent, so a future direct teleport cannot carry cruise over.
+  // Travel is a continuous part of the stick response, never a timed mode.
+  // A direct position discontinuity clears acceleration history and intent.
   if(state.cruisePosition&&Math.hypot(state.x-state.cruisePosition[0],state.y-state.cruisePosition[1],state.z-state.cruisePosition[2])>1e-6)resetCruise(state);
   const speed=Math.hypot(state.vx,state.vy);
-  const alignment=speed>1?(state.vx*directionX+state.vy*directionY)/speed:1;
-  const directionChange=state.cruiseDirectionX*directionX+state.cruiseDirectionY*directionY;
-  const descending=input.throttle<0||state.vz<-.5;
-  if(stick<=HORIZONTAL_CRUISE.startStick||descending||Math.abs(input.yaw)>.25||alignment<.8||directionChange<.9)state.cruiseHold=0;
-  const canBuild=stick>HORIZONTAL_CRUISE.startStick&&!descending&&Math.abs(input.yaw)<=.25&&alignment>=.8;
-  const clearance=canBuild?cruiseClearance(state,directionX,directionY):0;
-  if(canBuild&&clearance>HORIZONTAL_CRUISE.startClearance)state.cruiseHold=Math.min(HORIZONTAL_CRUISE.intentDelay+HORIZONTAL_CRUISE.intentRamp+1,state.cruiseHold+dt);
-  else state.cruiseHold=0;
-  state.cruiseDirectionX=directionX;state.cruiseDirectionY=directionY;
+  const alignment=speed>1e-6?(state.vx*directionX+state.vy*directionY)/speed:1;
+  const steering=smooth((alignment-.3)/.7)*(1-smooth(Math.abs(input.yaw)/.8));
+  const level=(1-smooth(-input.throttle/.15))*(1-smooth((-state.vz-.1)/.4));
+  const demand=smooth((stick-HORIZONTAL_CRUISE.startStick)/(1-HORIZONTAL_CRUISE.startStick));
+  const clearance=demand*steering*level>0?cruiseClearance(state,directionX,directionY):0;
   const height=smooth((clearance-HORIZONTAL_CRUISE.startClearance)/(HORIZONTAL_CRUISE.fullClearance-HORIZONTAL_CRUISE.startClearance));
-  const intent=smooth((state.cruiseHold-dt/2-HORIZONTAL_CRUISE.intentDelay)/HORIZONTAL_CRUISE.intentRamp);
-  state.cruiseBlend=height*intent*smooth((stick-HORIZONTAL_CRUISE.startStick)/(1-HORIZONTAL_CRUISE.startStick))*smooth((alignment-.8)/.2);
+  state.cruiseBlend=height*demand*steering*level;
   return state.cruiseBlend;
+}
+// Bound only the take-up of positive travel acceleration. Midpoint integration
+// makes a keyboard step build from zero immediately and evenly across fps.
+// Release, descent, reverse and obstacle/boundary braking remain unfiltered.
+export function limitCruiseAcceleration(state,oldSpeed,dt){
+  const speed=Math.hypot(state.vx,state.vy);
+  if(!(dt>0))return;
+  const requested=(speed-oldSpeed)/dt;
+  if(state.cruiseBlend>0&&requested>0){
+    const previous=Math.max(0,state.cruiseAcceleration);
+    const factor=state.profile.acceleration;
+    const next=Math.min(requested,HORIZONTAL_CRUISE.travelAcceleration*factor,previous+HORIZONTAL_CRUISE.travelJerk*factor*dt);
+    const mean=requested>=previous?(previous+next)/2:next;
+    const limited=Math.min(speed,oldSpeed+Math.max(0,mean)*dt);
+    if(speed>limited){state.vx*=limited/speed;state.vy*=limited/speed}
+    state.cruiseAcceleration=next;
+  }else state.cruiseAcceleration=Math.max(0,requested);
 }
 export function rememberCruisePosition(state){state.cruisePosition=[state.x,state.y,state.z]}

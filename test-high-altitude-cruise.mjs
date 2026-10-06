@@ -33,12 +33,12 @@ for(const [id,p] of profiles){
  const top=advance(start(id),30,{pitch:1}),limit=16*p.topSpeed;
  assert(top.vy<=20*limit+1e-9&&top.vy>19.99*limit,'bounded actual high cruise');
  const y=top.y,v=top.vy;advance(top,2);
- assert.equal(top.cruiseBlend,0);assert.equal(top.cruiseHold,0);
+ assert.equal(top.cruiseBlend,0);assert.equal(top.cruiseAcceleration,0);
  assert(top.vy<v*.15,'release removes at least 85% of speed in 2 seconds');
  assert(top.y-y<135,'release travel under135m for every aircraft at full high cruise');
  const reverse=advance(start(id),30,{pitch:1}),reverseY=reverse.y;
  let time=0,maxY=reverseY;
- while(reverse.vy>0&&time<5){advance(reverse,1/60,{pitch:-1});time+=1/60;maxY=Math.max(maxY,reverse.y);assert.equal(reverse.cruiseBlend,0,'reverse brakes without travel assist')}
+ while(reverse.vy>0&&time<5){advance(reverse,1/60,{pitch:-1});time+=1/60;maxY=Math.max(maxY,reverse.y);if(reverse.vy>0)assert.equal(reverse.cruiseBlend,0,'opposing momentum brakes without travel assist')}
  assert(time<3.2,'reverse stops under3.2s');assert(maxY-reverseY<150,'reverse overshoot under150m');
  advance(reverse,4,{pitch:-1});assert(reverse.vy<-10,'reverse remains pilot controlled');
  const down=advance(start(id),30,{pitch:1}),before=down.vy;
@@ -48,7 +48,7 @@ for(const [id,p] of profiles){
  advance(down,3,{pitch:1,throttle:-1});assert(down.vy<=limit+1e-8,'descend sheds excess horizontal speed');
  advance(down,.2,{pitch:1});assert.equal(down.cruiseBlend,0,'releasing descent does not latch old cruise intent');
  const small=advance(start(id),30,{pitch:1});advance(small,3,{pitch:.4});assert.equal(small.cruiseBlend,0);assert(horizontal(small)<16,'small input returns toward precision flight');
- const quick=advance(start(id),.3,{pitch:1});assert.equal(quick.cruiseBlend,0,'brief push does not engage');
+ const quick=advance(start(id),.3,{pitch:1});assert(quick.cruiseBlend>0&&quick.vy<6,'brief push starts smoothly without waiting for a timed mode');
  const climb=advance(start(id),30,{pitch:1,roll:1,throttle:1});assert(horizontal(climb)<=20*limit+1e-9,'climbing diagonal norm cap');
  const edge=advance(start(id),30,{pitch:1});edge.x=FLIGHT_HALF;edge.vx=-20*limit;edge.vy=0;edge.roll=-.5;
  advance(edge,1/60,{roll:-1});assert(horizontal(edge)<=20*limit+1e-9,'boundary cannot bypass maximum envelope');
@@ -82,7 +82,8 @@ for(const action of ['reset','relocate','retry','teleport','aircraft']){
  if(action==='retry'){const m=new PrecisionMission();m.start(s,5);m.retry(s)}
  if(action==='teleport'){s.x+=1000;advance(s,1/60,{pitch:1})}
  if(action==='aircraft')s.setAircraft('micro65');
- assert.equal(s.cruiseBlend,0,`${action}: boost reset`);assert(s.cruiseHold<.02,`${action}: intent reset`);
+ if(action!=='teleport')assert.equal(s.cruiseBlend,0,`${action}: envelope reset`);
+ assert(s.cruiseAcceleration<=110/60+1e-8,`${action}: acceleration history reset`);
 }
 const paused=advance(start(),5,{pitch:1});paused.paused=true;const saved=JSON.stringify(paused);advance(paused,1,{pitch:1});assert.equal(JSON.stringify(paused),saved,'pause freezes all dynamics');paused.paused=false;advance(paused,1/60);assert.equal(paused.cruiseBlend,0,'cleared input exits cruise on resume');
 console.log('PASS: 5 aircraft × low/high AGL ×30/60/144Hz; real travel, diagonal normalization, climb/boundary bounds, release/reverse/descent, precision, terrain/solids/bridge foresight, reset/retry/relocation/teleport and pause');

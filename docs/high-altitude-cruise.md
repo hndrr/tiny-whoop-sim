@@ -5,10 +5,10 @@ High-air travel deliberately exaggerates real movement through the world while t
 ## Input, ramp and braking
 
 - Low flight retains the original force, damping, control response and 16 m/s WHOOP bound. Nominal telemetry integrates this same unscaled control model independently of altitude assistance. Altitude changes do not multiply or divide the displayed speed
-- More than 80% directional-stick magnitude is required. A 0.4 s consistent-input delay is followed by a 1.2 s smooth engagement ramp; the travel response then builds speed rapidly. There are no new keys or menus
+- Travel demand now grows continuously across 45–100% directional stick, with no dwell timer or delayed mode switch. Positive horizontal-speed take-up is limited to 90 m/s² and 110 m/s³ times the aircraft acceleration factor; release and safety braking stay responsive. See [onset measurements and input-transition tests](travel-onset.md). There are no new keys or menus
 - The height blend still uses 30–90 m **usable clearance**. With the 4 m look-ahead terrain margin, full open-ocean/flat-ground travel begins at 94 m actual AGL; assistance starts above 34 m. Terrain elevation, roofs and overhead collision solids count. Absolute world Z does not
 - Full travel multiplies thrust and its corresponding damping response by 2.4, approaching the 20× bound quickly rather than merely raising an unreachable speed cap
-- Releasing directional input, descending, opposing travel or making a strong turn cancels assistance. Overspeed drag and a 240 m/s²×aircraft-factor recovery rate shed excess motion continuously. No instant velocity reset or teleport is used
+- Releasing directional input, opposing travel or full descent cancels assistance promptly. Small yaw/descent inputs reduce it continuously rather than toggling a timed boost: assistance reaches zero at 15% downward throttle or 0.5 m/s downward motion. Overspeed drag and a 240 m/s²×aircraft-factor recovery rate shed excess motion continuously. No instant velocity reset or teleport is used
 - Reset, relocation and mission retry clear both travel intent and nominal velocity. Aircraft changes preserve ongoing movement while changing the profile bound. Crash indication becomes zero immediately, including crashes flagged by the swept-solid check outside FlightState
 
 ## Measured motion
@@ -19,10 +19,10 @@ WHOOP trajectory:
 
 | Time | Actual speed | Indicated speed | Actual distance |
 |---|---:|---:|---:|
-|1 s|19.66 m/s|3.83 m/s|4.05 m|
-|2 s|166.38 m/s|7.29 m/s|95.02 m|
-|4 s|289.19 m/s|11.54 m/s|582.17 m|
-|8 s|318.72 m/s|14.83 m/s|1,825.26 m|
+|1 s|53.18 m/s|3.83 m/s|18.22 m|
+|2 s|143.18 m/s|7.29 m/s|116.40 m|
+|4 s|279.94 m/s|11.54 m/s|562.86 m|
+|8 s|318.35 m/s|14.83 m/s|1,794.91 m|
 
 After 30 seconds of continuous high-air input:
 
@@ -42,10 +42,10 @@ WHOOP starts at rest, already at a fixed safe altitude at least 110 m above the 
 
 | Route | Distance | Original normal flight | Previous 3× build | Current 20× travel |
 |---|---:|---:|---:|---:|
-|Airfield→East Harbor|1,804 m|115.93 s|41.68 s|7.93 s|
-|East Harbor→Lighthouse|3,669 m|232.49 s|80.54 s|13.77 s|
+|Airfield→East Harbor|1,804 m|115.93 s|41.68 s|8.03 s|
+|East Harbor→Lighthouse|3,669 m|232.49 s|80.54 s|13.87 s|
 
-The retained baseline measurements are from `87ecb79c000d17dc774be3a4983b0f81c9a0c378`; the immediately preceding 3×/fixed-camera source is `53b030a3753de196fc3c054ac6b07b9d0aa49cfb`. Current trip numbers are reproduced by `test-fast-travel.mjs` using actual controls and collision checks.
+The retained baseline measurements are from `87ecb79c000d17dc774be3a4983b0f81c9a0c378`; the earlier 3×/fixed-camera source is `53b030a3753de196fc3c054ac6b07b9d0aa49cfb`. Current trip numbers are reproduced by `test-fast-travel.mjs` using actual controls and collision checks.
 
 ## Terrain, solids, turns and boundaries
 

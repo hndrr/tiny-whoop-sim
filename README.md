@@ -149,7 +149,7 @@ Existing ridges use face-based lighting and coherent distant colors with a conti
 
 ## High-altitude travel
 
-Holding a strong directional input in clear high air now exaggerates actual world travel up to 20× normal flight, with a rapid smooth ramp and scaled braking. The speed display deliberately follows an independent nominal drone model; it does not show the exaggerated world velocity. Collisions, missions and navigation use actual motion. Low flight keeps its precise handling, and release/descent/turning exits travel assistance. No extra key is needed. See [virtual telemetry, measured trip times, braking and verification limits](docs/high-altitude-cruise.md).
+Holding a strong directional input in clear high air now exaggerates actual world travel up to 20× normal flight, with continuous stick response, bounded acceleration take-up and scaled braking. The speed display deliberately follows an independent nominal drone model; it does not show the exaggerated world velocity. Collisions, missions and navigation use actual motion. Low flight keeps its precise handling, and release/descent/turning exits travel assistance. No extra key is needed. See [virtual telemetry, measured trip times, braking and verification limits](docs/high-altitude-cruise.md).
 
 ### Loose chase-camera motion
 
