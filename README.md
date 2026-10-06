@@ -142,3 +142,7 @@ Near/far opaque instanced geometry shares the same vertical crown profile, with 
 ## Progressive horizontal acceleration
 
 Strong right-stick input sustains real acceleration longer, while gentle inputs preserve precise mission control. Release and opposite input provide self-level braking; diagonal input has the same circular envelope across keyboard/mouse/touch and a shared horizontal speed bound. See [trajectory measurements and verification](docs/acceleration-verification.md). These are deterministic simulation results, not hands-on/device feel validation.
+
+## Faceted mountain scenery
+
+Existing ridges use face-based lighting and coherent distant colors with a continuous earth palette. Physical heights, region plateaus, terrain stitching, sky/fog and FPV effects remain unchanged. See [geometry checks, memory cost and unverified device limits](docs/faceted-terrain.md). No new mountain backdrop, triangle count or draw call is added; GPU work and geometry storage can increase.

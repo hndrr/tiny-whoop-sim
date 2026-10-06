@@ -2,6 +2,7 @@ import {createFlightRenderTarget} from './dist/render-color.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {REGIONS,regionSpawn,terrainHeight,SEA_LEVEL} from './dist/world.mjs';
+import {terrainColor} from './dist/terrain-visuals.mjs';
 import {runInNewContext} from 'node:vm';
 import * as T from './dist/vendor/three.module.min.js';
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
@@ -28,8 +29,8 @@ const oldMap=linear([120,131,77]),newMap=linear([222,222,222]);
 const display=color=>color.clone().convertLinearToSRGB().toArray().map(x=>Math.round(Math.min(1,Math.max(0,x))*255));
 const untreated=color=>color.toArray().map(x=>Math.round(Math.min(1,Math.max(0,x))*255));
 const results=[];
-for(const color of ['#a39b77','#66774a','#737a67']){
- const vertex=new T.Color(color),representativeDiffuse=.45;
+for(const z of [-3,14,65,140,240,300]){
+ const vertex=terrainColor(650,1550,z),color='#'+vertex.getHexString(),representativeDiffuse=.45;
  const oldPixel=vertex.clone().multiply(oldMap).multiplyScalar(representativeDiffuse);
  const corrected=vertex.clone().multiply(newMap).multiplyScalar(representativeDiffuse);
  const previous180=untreated(oldPixel.clone().multiplyScalar(1.8)),new100=display(corrected);
@@ -48,8 +49,7 @@ for(let index=0;index<REGIONS.length;index++){
   const h=terrainHeight(spawn[0]+dx,spawn[1]+dy);
   if(h<SEA_LEVEL){waterSamples++;paths.add('ocean shader');continue}
   terrainSamples++;paths.add('underlying terrain vertex hue × neutral grass detail');
-  const hex=h<1?'#a39b77':h>140?'#737a67':'#66774a';
-  const value=new T.Color(hex).multiply(newMap).multiplyScalar(.45),rgb=display(value);
+  const value=terrainColor(spawn[0]+dx,spawn[1]+dy,h).multiply(newMap).multiplyScalar(.45),rgb=display(value);
   assert(Math.min(...rgb)>40,`${REGIONS[index].id} natural ground keeps representative detail`);samples.push(rgb);
  }
  stageResults.push({region:REGIONS[index].id,paths:[...paths],samples});
