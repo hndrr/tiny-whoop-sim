@@ -132,3 +132,9 @@ The inspector reuses the flight renderer, one render target, readback buffer and
 ## Lightweight surface pass
 
 Airfield asphalt and concrete use original 256px periodic albedo/detail maps generated locally at startup, metre-scaled UVs, and shared geometry. Roof/steel/glass share one small static analytic-sky reflection with a safe unsupported-device fallback. No stock/AI image assets or new dependencies are required. Flight mechanics and default feed brightness/output remain unchanged. See [surface authorship, memory budget and validation plan](docs/visual-surfaces.md). The opt-in `?profile=1` diagnostic has no on-screen UI; `?colorPipeline=1` is a separately gated, unverified color-output experiment. Real-device WebGL/touch/FPS verification remains pending.
+
+## Authored forest silhouettes
+
+The existing 700 tree positions and seeded placement are preserved. Three muted, original low-poly crown families replace the repeated single cones: overlapping broadleaf masses and layered conifers, with per-instance tint and rotation. Vertex shading is authored geometry color, not a photographic foliage texture. Trunks meet the ground and extend into the crown; trees remain non-colliding decoration.
+
+Near/far opaque instanced geometry shares the same vertical crown profile, with a 650 m threshold and 65 m hysteresis. Updates occur after at least 12 m of camera movement; no billboard rotation, alpha foliage, texture downloads or extra shadow-casting passes. Maximum 12 draw batches (versus 2 before), 146 triangles per tree (versus 32 before), and about 255 KB of geometry/instance buffers. These are structural upper bounds, not measured phone GPU timings. CPU geometry, random-stream parity and LOD tests pass; actual WebGL appearance and phone performance still need device validation.
