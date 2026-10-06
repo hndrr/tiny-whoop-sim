@@ -6,6 +6,7 @@ import {GATES} from './dist/flight.mjs';
 import {localizeFlight} from './dist/localize-flight.mjs';
 import {setupPrecision} from './dist/precision-ui.mjs';
 import {FlightState} from './dist/flight.mjs';
+import {supportingSurfaceHeight,segmentHitsSolid} from './dist/stage.mjs';
 import {i18n} from './dist/i18n.mjs';
 const nodes=new Map();
 // Minimal DOM contract harness: parse the real settings markup and apply real i18n.
@@ -44,7 +45,7 @@ const unsubscribe=i18n.subscribe(()=>{i18n.apply();updateHUD()});
 ui.mission.start(state);state.paused=false;
 for(const language of ['ja','en','ja','en']){
  i18n.setLanguage(language);i18n.apply();updateHUD();
- const label=language==='ja'?'ミッション':'PRECISION';
+ const label=language==='ja'?'ミッション':'MISSIONS';
  const description=language==='ja'?'指令に沿って飛ぶ・時間制限なし':'Follow flight instructions · No time limit';
  assert.equal(nodes.get('precisionFlight').textContent,label);
  assert.equal(nodes.get('precisionDescription').textContent,description);
@@ -60,5 +61,18 @@ for(const language of ['ja','en','ja','en']){
 }
 unsubscribe();
 console.log('PASS: actual settings markup, accessible mission explanation, repeated EN/JA switching, main HUD mode label, CRASHED preservation and free-flight exit');
+// Outdoor HUD state and terrain-relative marker use the same live mission.
+for(const stageIndex of [3,4]){
+ ui.mission.start(state,stageIndex);ui.render();const o=ui.mission.objective;
+ assert.equal(scene.marker.position.z,world.groundHeight(o.target[0],o.target[1]));
+ assert.equal(scene.marker.children[2].position.z+scene.marker.position.z,o.target[2]);
+ assert.equal(scene.marker.children[2].scale.x,7,'outdoor beacon is enlarged for distance');
+ assert.equal(nodes.get('dispatchPayload').hidden,false);
+ for(const language of ['ja','en']){i18n.setLanguage(language);ui.render();assert.equal(nodes.get('dispatchPayload').textContent,i18n.t(ui.mission.taskStatus))}
+ ui.mission.index=2;ui.render();assert.equal(nodes.get('dispatchPayload').textContent,i18n.t(ui.mission.taskStatus));
+ const target=ui.mission.objective.target,padHeight=scene.marker.position.z+scene.marker.children[0].position.z;assert.equal(padHeight,supportingSurfaceHeight(...target)+.035);
+ if(stageIndex===3){assert.equal(padHeight,4.035,'delivery marker sits above the actual pier deck');assert(!segmentHitsSolid([target[0],target[1],padHeight],[target[0],target[1],padHeight],0))}
+}
+ui.mission.start(state,0);ui.render();assert.equal(nodes.get('dispatchPayload').hidden,true);assert.equal(scene.marker.children[2].scale.x,1);
 delete globalThis.document;
 console.log('PASS: dispatch HUD/marker lifecycle, live translation without state mutation, pointer blur and keyboard focus preservation');

@@ -1,9 +1,11 @@
 import * as T from './vendor/three.module.min.js';
 import {PrecisionMission,objectiveFeedback} from './precision-missions.mjs';
+import {groundHeight} from './world.mjs';
+import {supportingSurfaceHeight} from './stage.mjs';
 import {i18n} from './i18n.mjs';
 export function setupPrecision({scene,state,start,leave,retry,next=()=>{},replay=retry,completionLeave=leave,clearInputs=()=>{}}){
  const mission=new PrecisionMission(),panel=document.createElement('aside');panel.id='dispatchPanel';panel.hidden=true;
- panel.innerHTML='<small id="dispatchCount"></small><h2 id="dispatchTitle"></h2><p id="dispatchDistance"></p><p id="dispatchAltitude"></p><div class="dispatch-progress" id="dispatchProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i id="dispatchFill"></i></div><small id="dispatchStatus" role="status"></small><p id="dispatchHint"></p><button id="retryDispatch"></button><button id="leaveDispatch" data-i18n="modeFree"></button>';
+ panel.innerHTML='<small id="dispatchCount"></small><h2 id="dispatchTitle"></h2><p id="dispatchDistance"></p><p id="dispatchAltitude"></p><small id="dispatchPayload" role="status" hidden></small><div class="dispatch-progress" id="dispatchProgress" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i id="dispatchFill"></i></div><small id="dispatchStatus" role="status"></small><p id="dispatchHint"></p><button id="retryDispatch"></button><button id="leaveDispatch" data-i18n="modeFree"></button>';
  document.body.append(panel);
  const modes=document.createElement('div');modes.id='flightActivities';modes.innerHTML='<button id="freeFlight" data-i18n="modeFree"></button><button id="precisionFlight" data-i18n="modePrecision" aria-describedby="precisionDescription"></button>';const description=document.createElement('p');description.id='precisionDescription';description.setAttribute('data-i18n','precisionDescription');document.getElementById('helpPanel').prepend(modes,description);
  function bindAction(id,action){const button=document.getElementById(id);button.onclick=event=>{action();if(event.detail>0)button.blur()}}
@@ -74,6 +76,7 @@ export function setupPrecision({scene,state,start,leave,retry,next=()=>{},replay
   if(!mission.active)return;
   const total=mission.objectives.length,holdSeconds=mission.holdSeconds;
   $('dispatchCount').textContent=t('missionStageProgress',{stage:mission.stageIndex+1,current:Math.min(mission.index+1,total),total});
+  $('dispatchPayload').hidden=!mission.taskStatus;$('dispatchPayload').textContent=mission.taskStatus?t(mission.taskStatus):'';
   $('dispatchTitle').textContent=t(mission.done?'missionComplete':mission.objective.title);
   $('dispatchHint').textContent=mission.done?t('missionReady'):t(mission.objective.hint);
   $('retryDispatch').textContent=t(mission.done?'replayMission':'retryObjective');
@@ -89,14 +92,14 @@ export function setupPrecision({scene,state,start,leave,retry,next=()=>{},replay
    $('replayMissionStage').textContent=t('replayMission');$('leaveMissionCompletion').textContent=t('modeFree');
    showCompletion();
   }
-  if(mission.objective){const o=mission.objective,f=objectiveFeedback(state,o);marker.position.set(o.target[0],o.target[1],0);pad.scale.setScalar(f.radius/4);corners.scale.set(f.radius/4,f.radius/4,1);diamond.position.z=o.target[2];for(const post of corners.children){post.scale.z=(f.maxAltitude-f.minAltitude)/1.1;post.position.z=(f.minAltitude+f.maxAltitude)/2}
+  if(mission.objective){const o=mission.objective,f=objectiveFeedback(state,o);marker.position.set(o.target[0],o.target[1],groundHeight(o.target[0],o.target[1]));pad.position.z=supportingSurfaceHeight(...o.target)-marker.position.z+.035;pad.scale.setScalar(f.radius/4);corners.scale.set(f.radius/4,f.radius/4,1);diamond.position.z=o.target[2]-marker.position.z;diamond.scale.setScalar(mission.stage.kind?7:1);for(const post of corners.children){post.scale.z=(f.maxAltitude-f.minAltitude)/1.1;post.position.z=(f.minAltitude+f.maxAltitude)/2}
    const dx=o.target[0]-state.x,dy=o.target[1]-state.y;
    const relative=Math.atan2(-dx,dy)-state.heading;const angle=Math.atan2(Math.sin(relative),Math.cos(relative));
    const direction=Math.abs(angle)<.35?'targetAhead':Math.abs(angle)>2.55?'targetBehind':angle>0?'targetLeft':'targetRight';
    $('dispatchDistance').textContent=t(f.distance<=f.radius?'targetInside':direction,{distance:f.distance.toFixed(1)});
    $('dispatchAltitude').textContent=t('targetAltitude',{height:f.altitude.toFixed(1),min:formatAltitude(f.minAltitude),max:formatAltitude(f.maxAltitude)});
    const params={action:t(started||state.elapsed>0?'resume':'startFlight'),distance:f.remaining.toFixed(1),speed:f.horizontalSpeed.toFixed(1),limit:f.horizontalLimit,vertical:f.verticalSpeed.toFixed(1),verticalLimit:f.verticalLimit,seconds:holdSeconds.toFixed(1),progress};
-   $('dispatchStatus').textContent=t('feedback_'+f.reason,params);
+   $('dispatchStatus').textContent=t(mission.stage.kind&&f.reason==='hold'?'feedback_arrival':'feedback_'+f.reason,params);
   }else {$('dispatchDistance').textContent='';$('dispatchAltitude').textContent=''}
  }
  return {mission,render};

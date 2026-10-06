@@ -1,5 +1,6 @@
 import {GATES} from './flight.mjs';
-import {groundHeight} from './world.mjs';
+import {groundHeight,REGIONS} from './world.mjs';
+import {ERRAND_STAGES,errandStatus} from './errand-missions.mjs';
 
 // An untimed task layer only. Flight dynamics, inputs and collision stay shared.
 export const PRECISION_OBJECTIVES=Object.freeze([
@@ -24,7 +25,8 @@ export const MISSION_STAGES=Object.freeze([
   {id:'windowOut',title:'windowOutTitle',hint:'windowOutHint',target:[-40,60,3.5],checkpoint:[-40,45,3.5],radius:1.5,minAltitude:3,maxAltitude:4,horizontalLimit:1,verticalLimit:.5},
   {id:'descent',title:'controlledDescentTitle',hint:'controlledDescentHint',target:[-40,60,.65],checkpoint:[-40,60,3.5],radius:1.5,minAltitude:.35,maxAltitude:.95,horizontalLimit:.7,verticalLimit:.35},
  ]},
-].map(stage=>Object.freeze({...stage,objectives:Object.freeze(stage.objectives.map(o=>Object.freeze({...o,target:Object.freeze(o.target),checkpoint:Object.freeze(o.checkpoint)})))})));
+...ERRAND_STAGES,
+].map(stage=>Object.freeze({region:'airfield',...stage,objectives:Object.freeze(stage.objectives.map(o=>Object.freeze({...o,target:Object.freeze(o.target),checkpoint:Object.freeze(o.checkpoint)})))})));
 export const normalizeStageIndex=value=>Number.isInteger(value)&&value>=0&&value<MISSION_STAGES.length?value:0;
 
 // The HUD and completion use the same evaluator, so advice cannot drift from rules.
@@ -42,6 +44,7 @@ export class PrecisionMission {
  constructor(){this.completedStages=[];this.stageIndex=0;this.active=false;this.index=0;this.hold=0;this.done=false}
  get stage(){return MISSION_STAGES[this.stageIndex]}
  get objectives(){return this.stage.objectives}
+ get taskStatus(){return errandStatus(this.stage,this.index)}
  get holdSeconds(){return HOLD_SECONDS}
  get allComplete(){return MISSION_STAGES.every((_,index)=>this.completedStages.includes(index))}
  get hasNext(){return this.stageIndex<MISSION_STAGES.length-1}
@@ -54,6 +57,7 @@ export class PrecisionMission {
   if(this.done){this.index=0;this.done=false}
   const o=this.objective;state.reset();
   [state.x,state.y,state.z]=o.checkpoint;
+  state.region=REGIONS.findIndex(region=>region.id===this.stage.region);
   state.heading=Math.atan2(-(o.target[0]-state.x),o.target[1]-state.y);
   // Disable legacy race bookkeeping while dispatches are active.
   state.practiceEnabled=false;state.complete=true;state.explore=true;state.gate=GATES.length;state.finishTime=null;

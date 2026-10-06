@@ -81,7 +81,7 @@ addEventListener('resize',()=>sticks.render());
 precision=setupPrecision({scene,state:s,start:startPrecision,leave:leavePrecision,retry:reset,next:nextMissionStage,replay:replayMissionStage,completionLeave:finishMissionFree,clearInputs:()=>{keys.clear();clearSticks()}});
 function startPrecision(){flightSelection.selector.open('mission')}
 function leavePrecision(){flightSelection.selector.open('free')}
-function nextMissionStage(){if(precision.mission.next(s)){s.paused=false;flightStarted=true;keys.clear();clearSticks();updateHUD()}}
+function nextMissionStage(){if(precision.mission.next(s)){flightSelection.setRegion(precision.mission.stage.region);s.paused=false;flightStarted=true;keys.clear();clearSticks();updateHUD()}}
 function replayMissionStage(){precision.mission.start(s,precision.mission.stageIndex);s.paused=false;flightStarted=true;keys.clear();clearSticks();updateHUD()}
 function finishMissionFree(){precision.mission.leave();s.practiceEnabled=true;s.paused=false;flightStarted=true;keys.clear();clearSticks();updateHUD()}
 function startSelectedFlight(mode,stageIndex=0){if(mode==='mission'){if(!precision.mission.active||precision.mission.stageIndex!==stageIndex||precision.mission.done)precision.mission.start(s,stageIndex);else if(s.crashed)precision.mission.retry(s)}else {precision.mission.leave();s.practiceEnabled=true;if(s.crashed)flightSelection.reset()}flightStarted=true;keys.clear();clearSticks();help(false)}

@@ -79,20 +79,20 @@ export function createFlightSelector({renderer,captureStage,getSelection,getMode
   sync();
  }
  function sync(){
-  const mission=pendingMode==='mission',effectiveRegion=mission?'airfield':pending.region;
+  const mission=pendingMode==='mission',effectiveRegion=mission?MISSION_STAGES[pendingStage].region:pending.region;
   $('#selectorFree').setAttribute('aria-pressed',String(!mission));$('#selectorMission').setAttribute('aria-pressed',String(mission));
   $('#selectorMissionStages').hidden=!mission;for(const [index,button] of [...$('.mission-stage-grid').children].entries())button.setAttribute('aria-pressed',String(index===pendingStage));
   $('#selectorAreaHint').textContent=i18n.t(mission?'missionAreaHint':'freeAreaHint');
   for(const button of stages.children){
-   const region=button.dataset.region,fixed=mission&&region==='airfield';
+   const region=button.dataset.region,fixed=mission&&region===effectiveRegion;
    // Keep the free-flight choice pending, but expose only the actual mission area.
    button.hidden=mission&&!fixed;button.disabled=mission;button.tabIndex=mission?-1:0;
    button.onclick=mission?null:()=>{pending.region=region;sync()};
    button.setAttribute('aria-pressed',String(region===effectiveRegion));
-   const title=button.querySelector('strong');title.dataset.i18n=fixed?'missionFixedArea':`region.${region}`;title.textContent=i18n.t(title.dataset.i18n);
+   const title=button.querySelector('strong');title.dataset.i18n=fixed&&region==='airfield'?'missionFixedArea':`region.${region}`;title.textContent=i18n.t(title.dataset.i18n);
   }
   for(const button of options.children)button.setAttribute('aria-pressed',String(button.dataset.vehicle===pending.vehicle));
-  $('.selection-summary').textContent=`${mission?i18n.t(MISSION_STAGES[pendingStage].title):i18n.t('modeFree')} / ${getVehicle(pending.vehicle).name} / ${i18n.t(mission?'missionFixedArea':`region.${effectiveRegion}`)}`;
+  $('.selection-summary').textContent=`${mission?i18n.t(MISSION_STAGES[pendingStage].title):i18n.t('modeFree')} / ${getVehicle(pending.vehicle).name} / ${i18n.t(mission&&effectiveRegion==='airfield'?'missionFixedArea':`region.${effectiveRegion}`)}`;
  }
  $('#selectorFree').onclick=()=>{pendingMode='free';sync()};$('#selectorMission').onclick=()=>{pendingMode='mission';sync()};
  function renderVehicle(now){
@@ -118,7 +118,7 @@ export function createFlightSelector({renderer,captureStage,getSelection,getMode
  addEventListener('blur',releaseDrag);
  document.addEventListener('visibilitychange',()=>{stopAnimation();if(document.hidden)releaseDrag();else scheduleRender()});
  dialog.querySelectorAll('[data-action="cancel"]').forEach(b=>b.onclick=close);$('[data-action="left"]').onclick=()=>rotate(-.3);$('[data-action="right"]').onclick=()=>rotate(.3);
- $('form').addEventListener('submit',e=>{e.preventDefault();if(!dialog.open)return;const next={...pending,region:pendingMode==='mission'?'airfield':pending.region};onApply(next,{areaChanged:next.region!==lastCommitted.region,vehicleChanged:next.vehicle!==lastCommitted.vehicle,mode:pendingMode,stageIndex:pendingStage});saveSelection(next);close()});
+ $('form').addEventListener('submit',e=>{e.preventDefault();if(!dialog.open)return;const next={...pending,region:pendingMode==='mission'?MISSION_STAGES[pendingStage].region:pending.region};onApply(next,{areaChanged:next.region!==lastCommitted.region,vehicleChanged:next.vehicle!==lastCommitted.vehicle,mode:pendingMode,stageIndex:pendingStage});saveSelection(next);close()});
  canvas.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(e.code)){e.preventDefault();e.stopPropagation();if(e.code==='Home'){yaw=.5;elevation=.72}else if(e.code==='ArrowUp'||e.code==='ArrowDown'){elevation=Math.max(.15,Math.min(1.4,elevation+(e.code==='ArrowUp'?.12:-.12)))}else yaw+=e.code==='ArrowLeft'?-.2:.2;manualRender()}});
  canvas.addEventListener('pointerdown',e=>{if(drag)return;e.preventDefault();canvas.focus();canvas.setPointerCapture(e.pointerId);drag={id:e.pointerId,x:e.clientX,y:e.clientY};motion.interact()});
  canvas.addEventListener('pointermove',e=>{if(drag?.id!==e.pointerId)return;yaw+=(e.clientX-drag.x)*.013;elevation=Math.max(.15,Math.min(1.4,elevation+(e.clientY-drag.y)*.008));drag.x=e.clientX;drag.y=e.clientY;manualRender()});
