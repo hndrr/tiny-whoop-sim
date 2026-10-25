@@ -97,7 +97,7 @@ Changes:
 
   > projected error = (far-mesh worst interpolation error at the near vertices) × (feed height / (2 tan(fov / 2))) / distance
 
-  The far mesh's error is measured against its real triangle split. The threshold is 3 px, with ±20% hysteresis. Patches within 160 m of the camera are always near. Because the cost is in pixels, it does not depend on patch size, feed resolution or field of view. The rugged ridges keep fine geometry farther out; flat ground switches earlier. Near-patch counts in the CPU model: spawn 9 (the old 950 m rule gave 10), aloft 5 (2), ridge 20 (10).
+  The far mesh's error is measured against its real triangle split. The threshold is 3 px, with ±20% hysteresis. Patches within 160 m of the camera are always near. Because the cost is in pixels, one threshold works for every patch size. The switch distance still scales with feed height and field of view: a taller feed or a narrower FOV keeps near geometry farther out. The rugged ridges keep fine geometry farther out; flat ground switches earlier. Near-patch counts in the CPU model: spawn 9 (the old 950 m rule gave 10), aloft 5 (2), ridge 20 (10).
 - **Terrain shading.** Terrain shading is procedural, using no textures:
   - broad soil and vegetation variation at two scales (170 m and 47 m)
   - drier patches, and greener low-slope ground

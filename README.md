@@ -207,7 +207,7 @@ The upgrade borrows from two references: the Open Water real-time sea study, and
   - clear-coated airframes with lathe ducts and prop blur discs
 - **Adaptive quality.** Frame time divided by the refresh interval steps chase feed scale, chase MSAA, swell bands and shadow-map size with hysteresis and dwell. `?quality=high|balanced|medium|low` pins a level.
 
-Draw calls fell 5–10× across the fixed poses. For example, airfield FPV went from 599 to 67 and the aloft view from 651 to 65. These are desktop headless-Chrome measurements; frame rate on a physical phone has not been measured.
+Draw calls fell about 3–10× across the fixed poses. For example, airfield FPV went from 599 to 67, the aloft view from 651 to 65 and the ridge view from 116 to 36. These are desktop headless-Chrome measurements; frame rate on a physical phone has not been measured.
 
 
 ## Graphics upgrade 3: goggle OSD, meadow detail and sky
