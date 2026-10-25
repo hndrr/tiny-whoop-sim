@@ -83,3 +83,34 @@
 .precision-complete #dispatchPanel,.precision-complete #message,.precision-complete #warning{visibility:hidden}
 @media(max-width:600px){#missionCompletion{width:calc(100vw - 24px);max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);padding:28px 16px}#missionCongratulations{font-size:clamp(22px,6.4vw,38px)}.mission-completion-mark{margin-bottom:18px}#missionCompletionSubtitle{margin-top:20px}.mission-completion-actions{margin-top:26px;gap:9px}.mission-completion-actions button{width:100%;min-width:0}}
 @media(max-height:520px){#missionCompletion{max-height:calc(100dvh - 16px);padding:20px}.mission-completion-mark{font-size:30px;margin-bottom:12px}#missionCongratulations{font-size:clamp(22px,5.8vw,64px)}#missionCompletionSubtitle{margin-top:14px;font-size:20px}.mission-completion-actions{margin-top:18px}.mission-completion-actions button{min-height:44px;padding:10px 16px}}
+
+/* Goggle OSD: mint accents, thin glass panels, horizon and compass tape. */
+:root{--osd-accent:#94f5cf;--osd-glass:#0b19285c;--osd-line:#e9f3dccc}
+#metrics{padding:10px 16px 2px 12px;background:linear-gradient(90deg,var(--osd-glass),transparent);border-left:2px solid #94f5cf8c;border-radius:0 6px 6px 0}
+#metrics label,#course label{color:var(--osd-accent)}
+#course{padding:8px 12px 2px 18px;background:linear-gradient(270deg,var(--osd-glass),transparent);border-right:2px solid #94f5cf8c;border-radius:6px 0 0 6px}
+.bar{width:60px;height:7px;border-color:#e4e8d9aa;padding:1px}.bar i{background:repeating-linear-gradient(90deg,var(--osd-accent) 0 4px,transparent 4px 6px);transition:none}
+body.fpv #metrics strong,body.fpv #course strong,body.fpv #compass .compass-heading{text-shadow:var(--ink-shadow),0 0 9px #94f5cf66}
+#vsi{display:inline-block;position:relative;width:5px;height:18px;margin:0 -12px 0 -14px;border:1px solid #e4e8d988;align-self:center;vertical-align:middle}
+#vsi:after{content:"";position:absolute;left:-3px;right:-3px;top:50%;height:1px;background:#e4e8d9cc}
+#vsiFill{position:absolute;left:0;right:0;bottom:50%;height:50%;background:var(--osd-accent);transform-origin:50% 100%;transform:scaleY(0)}
+#homeArrow{display:inline-block;margin-right:7px;color:var(--osd-accent);font-size:11px;transform-origin:50% 55%}
+#ahi{position:fixed;inset:0;pointer-events:none;clip-path:circle(min(27vh,30vw) at 50% 50%)}
+#ahi[hidden],body:not(.fpv) #ahi,body.flight-idle #ahi{display:none}
+.ahi-line{position:absolute;left:0;top:0;width:min(20vh,22vw);height:0;border-top:1px solid var(--osd-line);filter:drop-shadow(0 1px 0 #15221a) drop-shadow(0 -1px 0 #15221a)}
+.ahi-line.horizon{width:min(46vh,52vw);border:0;background:linear-gradient(90deg,var(--osd-line) 0 34%,transparent 34% 66%,var(--osd-line) 66%);height:2px}
+.ahi-line.dive{border-top-style:dashed}
+.ahi-line span{position:absolute;top:-7px;font-size:10px;line-height:12px;color:var(--osd-line);text-shadow:var(--ink-shadow)}
+.ahi-line span:first-child{right:calc(100% + 6px)}.ahi-line span:last-child{left:calc(100% + 6px)}
+#compass{position:fixed;left:50%;top:calc(max(20px,env(safe-area-inset-top)) + 58px);transform:translateX(-50%);width:min(340px,58vw);height:30px;overflow:hidden;pointer-events:none;background:linear-gradient(90deg,transparent,var(--osd-glass) 18%,var(--osd-glass) 82%,transparent);border-bottom:1px solid #94f5cf55;mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent);-webkit-mask-image:linear-gradient(90deg,transparent,#000 14%,#000 86%,transparent)}
+.compass-strip{position:absolute;left:0;top:0;bottom:0;width:720%}
+.compass-strip i{position:absolute;bottom:0;width:1px;height:5px;background:#e4e8d9a8;font-style:normal}
+.compass-strip i.major{height:9px;background:#e4e8d9dd}
+.compass-strip i.label{width:auto;height:auto;background:none;bottom:0;transform:translateX(-50%);padding-bottom:10px;font-size:9px;line-height:10px;color:#e4e8d9;text-shadow:var(--ink-shadow)}
+.compass-strip i.label:after{content:"";position:absolute;left:50%;bottom:0;width:1px;height:9px;background:#e4e8d9}
+.compass-home{position:absolute;bottom:10px;transform:translateX(-50%);font-size:9px;line-height:10px;padding:0 3px;color:#0f241c;background:var(--osd-accent);border-radius:2px}
+.compass-caret{position:absolute;left:50%;bottom:0;width:0;height:0;border:5px solid transparent;border-bottom-color:var(--osd-accent);transform:translateX(-50%)}
+.compass-heading{position:absolute;left:50%;top:1px;transform:translateX(-50%);font-size:11px;font-weight:bold;letter-spacing:.06em;padding:0 5px;background:#0b1928c0;border:1px solid #94f5cf66;border-radius:2px}
+body.flight-idle #compass{opacity:.55}
+@media(max-width:450px){#compass{top:calc(max(18px,env(safe-area-inset-top)) + 50px);width:46vw}}
+@media(max-height:520px){#compass{top:58px;width:min(260px,40vw);height:26px}}
