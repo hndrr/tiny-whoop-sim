@@ -20,19 +20,34 @@ export function terrainColor(x,y,z,target=new T.Color()){
  return target.lerp(earth,wash);
 }
 
+// Height of a patch vertex exactly as the rendered mesh stores it.
+function patchVertexHeight(cx,cy,lx,ly,segments){
+ const x=lx+cx,y=ly+cy;
+ // Preserve the existing coarse-edge interpolation byte-for-byte in intent:
+ // adjacent 24/6 LOD patches share the same piecewise-linear boundary.
+ if(segments>6&&(Math.abs(lx)>249.99||Math.abs(ly)>249.99)){
+  const vertical=Math.abs(lx)>249.99,t=vertical?y:x;
+  const base=Math.floor((t+WORLD_HALF)/(500/6))*(500/6)-WORLD_HALF,u=(t-base)/(500/6);
+  return vertical?terrainHeight(x,base)*(1-u)+terrainHeight(x,base+500/6)*u:terrainHeight(base,y)*(1-u)+terrainHeight(base+500/6,y)*u;
+ }
+ return terrainHeight(x,y);
+}
+// The drawn surface, not the analytic field: the near mesh's own triangles
+// (PlaneGeometry split a-b-d / b-c-d) can sit metres away from terrainHeight
+// across a 21 m cell on curved ground. Returns height and slope (rise/run).
+export function renderedTerrainSurface(x,y,segments=24){
+ const P=500,cx=Math.floor((x+WORLD_HALF)/P)*P-WORLD_HALF+P/2,cy=Math.floor((y+WORLD_HALF)/P)*P-WORLD_HALF+P/2,step=P/segments;
+ const u=Math.min(segments-1e-9,Math.max(0,(x-cx+P/2)/step)),v=Math.min(segments-1e-9,Math.max(0,(cy+P/2-y)/step)),i=Math.floor(u),j=Math.floor(v),fx=u-i,fy=v-j;
+ const h=(i,j)=>patchVertexHeight(cx,cy,i*step-P/2,-(j*step-P/2),segments),a=h(i,j),b=h(i,j+1),c=h(i+1,j+1),d=h(i+1,j);
+ if(fx+fy<=1)return {z:a+fx*(d-a)+fy*(b-a),slope:Math.hypot(d-a,b-a)/step};
+ return {z:c+(1-fx)*(b-c)+(1-fy)*(d-c),slope:Math.hypot(c-b,c-d)/step};
+}
+export const renderedTerrainHeight=(x,y)=>renderedTerrainSurface(x,y).z;
 export function createTerrainGeometry(cx,cy,segments){
  const geo=new T.PlaneGeometry(500,500,segments,segments);
  const p=geo.attributes.position,colors=new Float32Array(p.count*3),color=new T.Color();
  for(let i=0;i<p.count;i++){
-  const lx=p.getX(i),ly=p.getY(i),x=lx+cx,y=ly+cy;
-  let z=terrainHeight(x,y);
-  // Preserve the existing coarse-edge interpolation byte-for-byte in intent:
-  // adjacent 24/6 LOD patches share the same piecewise-linear boundary.
-  if(segments>6&&(Math.abs(lx)>249.99||Math.abs(ly)>249.99)){
-   const vertical=Math.abs(lx)>249.99,t=vertical?y:x;
-   const base=Math.floor((t+WORLD_HALF)/(500/6))*(500/6)-WORLD_HALF,u=(t-base)/(500/6);
-   z=vertical?terrainHeight(x,base)*(1-u)+terrainHeight(x,base+500/6)*u:terrainHeight(base,y)*(1-u)+terrainHeight(base+500/6,y)*u;
-  }
+  const lx=p.getX(i),ly=p.getY(i),x=lx+cx,y=ly+cy,z=patchVertexHeight(cx,cy,lx,ly,segments);
   p.setZ(i,z);terrainColor(x,y,z,color);color.toArray(colors,i*3);
  }
  geo.setAttribute('color',new T.Float32BufferAttribute(colors,3));

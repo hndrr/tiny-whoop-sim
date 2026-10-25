@@ -1,6 +1,6 @@
 import {groundSlabPlacement,coveredSupportPlacement,groundSurfaceGeometry} from './render-surfaces.mjs';
 import {createChaseCamera} from './chase-camera.mjs';
-import {applyTerrainShading,noiseMapMean} from './terrain-visuals.mjs';
+import {applyTerrainShading,noiseMapMean,renderedTerrainSurface} from './terrain-visuals.mjs';
 import {createTerrain} from './terrain-lod.mjs';
 import {chooseDepthMode,rendererDepthOptions} from './render-depth.mjs';
 import {createShadowScheduler} from './shadow-scheduler.mjs';
@@ -165,7 +165,7 @@ addEventListener('resize',()=>sticks.render());
 
 // Frame cost / refresh interval drives one-step level changes with dwell.
 // Meadow grass that follows the camera; the airfield's authored tufts stay.
-const grassField=createGrassField({geometry:tuftGeometry(bladeGeo),material:grassMat,terrainHeight,capacity:coarsePointer?GRASS_FIELD.coarseCapacity:GRASS_FIELD.capacity,exclude:footprintIndex([...pavedFootprints,...[...SOLIDS,...WORLD_OBJECTS].map(o=>boxFootprint(o.position,o.size,.6))])});scene.add(grassField.mesh);
+const grassField=createGrassField({geometry:tuftGeometry(bladeGeo),material:grassMat,terrainHeight,surface:renderedTerrainSurface,capacity:coarsePointer?GRASS_FIELD.coarseCapacity:GRASS_FIELD.capacity,exclude:footprintIndex([...pavedFootprints,...[...SOLIDS,...WORLD_OBJECTS].map(o=>boxFootprint(o.position,o.size,.6))])});scene.add(grassField.mesh);
 const renderQuality=createQualityController({coarse:coarsePointer,override:new URLSearchParams(location.search).get('quality'),onChange:applyQuality});
 function applyQuality(level){grassField.setDensity(level.grass);renderLevel.chaseScale=level.chaseScale;renderLevel.msaa=coarsePointer?0:level.msaa;oceanSurface.setWaveCount(Math.min(level.waves,coarsePointer?OCEAN.coarseWaves:OCEAN.waves));const size=coarsePointer?Math.min(1024,level.shadowMap):level.shadowMap;if(sun.shadow.mapSize.x!==size){sun.shadow.mapSize.set(size,size);sun.shadow.map?.dispose();sun.shadow.map=null;shadowSchedule.invalidate()}resize()}
 applyQuality(renderQuality.level);

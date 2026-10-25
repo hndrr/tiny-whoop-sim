@@ -26,6 +26,24 @@ for(const hz of [60,120,144]){
  drive(q,refresh,6);assert.equal(q.index,1,'back-off: the same probe now waits longer');
  drive(q,refresh,5);assert.equal(q.index,0,'after the doubled wait it is retried');
 }
+// A 60 Hz device held at 30 fps by load from the very first frame is not
+// mistaken for a 30 Hz display: the budget stays at 60 Hz, and stepping down
+// that actually speeds frames up keeps going until frames are on time.
+{const frameTime=[1000/30,1000/40,1000/60,1000/60],q=createQualityController();
+ for(let t=0;t<30;){const ms=frameTime[q.index];q.sample(ms);t+=ms/1000}
+ assert.equal(q.level.name,'medium','load-limited start steps down to the level that holds 60 Hz');assert(Math.abs(q.refreshMs-1000/60)<1e-9);
+ assert.deepEqual(q.history.slice(0,2).map(h=>h.reason),['over budget','over budget']);assert(!q.history.some(h=>h.reason==='refresh cap'),'load is never learned as a slow display');}
+// The review case: 1000/30 ms for 900 frames whatever the level. One step down
+// is tried; frames do not speed up, so 30 Hz is learned as the display rate
+// and the level is restored rather than degraded for nothing.
+{const q=createQualityController();for(let i=0;i<900;i++)q.sample(1000/30);
+ assert.equal(q.level.name,'high');assert(Math.abs(q.refreshMs-1000/30)<1e-9);
+ assert.deepEqual(q.history.map(h=>h.reason),['over budget','refresh cap'],'the drop was tested, not assumed');
+ // Once faster frames appear (e.g. a low-power cap lifts), the cap is dropped.
+ for(let i=0;i<300;i++)q.sample(1000/60);assert(Math.abs(q.refreshMs-1000/60)<1e-9);
+ const caps=q.history.filter(h=>h.reason==='refresh cap').length;for(let i=0;i<300;i++)q.sample(1000/30);assert(q.index>0&&q.history.filter(h=>h.reason==='refresh cap').length===caps,'and later 30 fps is treated as load again');}
+// A device already seen at 60 Hz never learns a cap from a slow spell.
+{const q=createQualityController();drive(q,1000/60,3);drive(q,1000/30,12);assert(q.history.every(h=>h.reason==='over budget'));assert(Math.abs(q.refreshMs-1000/60)<1e-9)}
 // Coarse pointers never climb to the MSAA level; overrides never move.
 {const q=createQualityController({coarse:true});drive(q,1000/60,30);assert.equal(q.index,1);drive(q,1000/60*2,20);assert.equal(q.index,QUALITY_LEVELS.length-1,'bottoms out at low');}
 {const q=createQualityController({override:'medium'});drive(q,1000/60*3,20);assert.equal(q.level.name,'medium');assert.equal(q.history.length,0)}
@@ -39,5 +57,5 @@ assert(main.includes("renderQuality.sample(frameMs,{active:!document.hidden&&!s.
 assert(main.includes('oceanSurface.setWaveCount(Math.min(level.waves,coarsePointer?OCEAN.coarseWaves:OCEAN.waves))'));
 assert(main.includes('sun.shadow.map?.dispose();sun.shadow.map=null;shadowSchedule.invalidate()'));
 assert(main.includes("override:new URLSearchParams(location.search).get('quality')"));
-console.log('PASS: refresh-normalised cost at 60/120/144 Hz, spike tolerance, one-step changes with dwell, headroom probing with back-off, coarse floor, fixed override, ignored paused/stalled frames and main wiring');
+console.log('PASS: refresh-normalised cost at 60/120/144 Hz, load at startup not learned as refresh, tested 30 Hz cap with restore and release, spike tolerance, one-step changes with dwell, headroom probing with back-off, coarse floor, fixed override, ignored paused/stalled frames and main wiring');
 console.log('Synthetic frame-series checks only; real-device frame times and the visual effect of each level need device verification.');

@@ -4,7 +4,8 @@ import {terrainHeight,WORLD_HALF,SEA_LEVEL} from './world.mjs';
 // Horizontal adaptivity in the spirit of quadtree tall cells: each 500 m patch
 // keeps fine geometry only while its coarse form would be visibly wrong. The
 // cost is the far mesh's worst interpolation error projected to feed pixels,
-// so the rule does not depend on patch size, resolution or field of view.
+// so one threshold fits every patch size; the switch distance still scales
+// with feed height and field of view.
 export const TERRAIN_LOD=Object.freeze({patch:500,near:24,far:6,pixelError:3,hysteresis:.2,alwaysNear:160,submergedMargin:.5});
 
 // Height of the far patch's actual triangles (PlaneGeometry split a-b-d / b-c-d).
