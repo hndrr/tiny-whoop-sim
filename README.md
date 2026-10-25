@@ -54,7 +54,7 @@ Two fly-through hangars with open loading bays and windows, interior roof beams 
 
 The chart is 8,000 × 8,000 metres (terrain plus coastal water). Seven distributed regions: AIRFIELD, EAST HARBOR, RIDGE VIADUCT, HILL SETTLEMENT, NORTH QUARRY, LIGHTHOUSE POINT and WEST WIND RIDGE. Explore continuously or use SETUP → START FLIGHT to start at a distant region. Free flight is open from the start, with optional untimed ring practice.
 
-Terrain uses 500 m chunks with 24-segment nearby and 6-segment distant meshes; landmarks and airfield details are distance-culled. Trees are instanced. Coarse-pointer devices use a 1.25 pixel-ratio ceiling and 1024 px shadow maps. These are implementation optimizations, not a measured iPhone frame-rate guarantee. Browser/iPhone visual and physical touch validation remains unavailable in the build environment.
+Terrain uses 500 m chunks with 24-segment nearby and 6-segment distant meshes. Only the 70 emerged chunks are built, and all of them draw as one batched multi-draw; each chunk picks its level by projected pixel error. Landmarks and airfield details are distance-culled. Trees are instanced. Coarse-pointer devices use a 1.25 pixel-ratio ceiling and 1024 px shadow maps. These are implementation optimizations, not a measured iPhone frame-rate guarantee. Browser/iPhone visual and physical touch validation remains unavailable in the build environment.
 
 ## Offshore flight
 
@@ -173,6 +173,39 @@ The ground-flicker investigation found actual overlapping render surfaces: six v
 
 Rendering now places only flush/buried flat paving 6 mm above terrain and indoor floors 18 mm above terrain; the separate layers also prevent the access strip and hangar floor from competing. Six fully covered support meshes stop 2 cm below the visible cap. World/collision records, rendered footprints and support bases stay unchanged. Corrected ground slabs render only their exposed top, avoiding a new vertical lip coplanar with tunnel portal ends. Their footprint and metre-scaled UVs are preserved. The correction is deliberately render-only and adds no meshes or draw calls.
 
-The renderer uses logarithmic depth without changing near clipping, FOV, draw distance, color storage or the analog feed. World sky/ocean shaders and the aircraft inspector's contact shadow use the same depth chunks as standard Three.js materials; the depth-disabled inspector backdrop and fullscreen compositor stay unchanged. Orthographic shadow-map depth retains its ordinary mapping. This adds fragment-depth work and can reduce early-depth optimizations on some GPUs; phone performance is unmeasured. No new render target, multisampling allocation or full-screen pass is added.
+The renderer uses reversed float32 depth where `EXT_clip_control` exists. Elsewhere it falls back to logarithmic depth, and `?depth=log` forces the fallback. Near clipping, FOV, draw distance, color storage and the analog feed are unchanged. World sky/ocean shaders and the aircraft inspector's contact shadow use the same depth chunks as standard Three.js materials; the depth-disabled inspector backdrop and fullscreen compositor stay unchanged. Orthographic shadow-map depth retains its ordinary mapping. This adds fragment-depth work and can reduce early-depth optimizations on some GPUs; phone performance is unmeasured. No new render target, multisampling allocation or full-screen pass is added.
 
 `test-render-surfaces.mjs` checks all nine corrected floors against both real terrain LODs (162 raycasts), paving/floor priority, the six covered supports, immutable collision records, shader-chunk wiring and float32/24-bit depth arithmetic. Representative aerial layers that tied under the old mapping separate by at least 23 stored depth codes in that numeric model. Existing FPV/chase signal, color/brightness, preview lifecycle, terrain and flight tests remain in the full suite. Actual driver shader compilation, rendered appearance and mobile frame rate still require device verification. Geometry-edge shimmer, distant LOD changes and moving shadow edges are separate possible artifacts; this patch does not claim to eliminate every temporal artifact.
+
+## Graphics upgrade: richer and cheaper
+
+The upgrade borrows from two references: the Open Water real-time sea study, and the Pacific Graphics 2026 paper on Extended Quadtree Tall Cells by Narita and Kanai. From the paper, it takes the idea of spending resolution only where it is visible, chosen by a normalized cost and smoothed so that it never jumps. Plan: [graphics-upgrade-plan.md](docs/graphics-upgrade-plan.md). Measurements: [render-performance.md](docs/render-performance.md).
+
+- **Rendering cost:**
+  - reversed float depth restores early depth rejection
+  - sky and sea draw after the scenery
+  - submerged terrain is no longer built
+  - shadow maps update on demand, on a texel-snapped light frame
+  - shader programs are warmed for both hangar-light states, so the first visit to the harbor no longer stalls
+  - unused canvas MSAA is off
+  - rough surfaces use Lambert
+- **Scenery:**
+  - static scenery is merged per material and 120 m cell
+  - gate fixtures and rocks are instanced
+  - the terrain is one batched multi-draw with screen-error LOD
+  - the flight airframe is baked per material
+- **Look:**
+  - corrugated container cladding and crate boards
+  - contact shading where solids meet the ground
+  - procedural terrain variation, steep-face rock and a wet shoreline
+  - faceted boulders
+  - wind in grass and tree crowns (held still under reduced motion)
+  - height fog with sun-side scattering
+  - drifting cumulus
+  - an Open Water–style sea: footprint-limited swell, Fresnel sky reflection, glint, coastal shallows and surf
+  - rotor-downwash ripples over water
+  - clear-coated airframes with lathe ducts and prop blur discs
+- **Adaptive quality.** Frame time divided by the refresh interval steps chase feed scale, chase MSAA, swell bands and shadow-map size with hysteresis and dwell. `?quality=high|balanced|medium|low` pins a level.
+
+Draw calls fell 5–10× across the fixed poses. For example, airfield FPV went from 599 to 67 and the aloft view from 651 to 65. These are desktop headless-Chrome measurements; frame rate on a physical phone has not been measured.
+

@@ -5,6 +5,7 @@ import {getFlightProfile} from './flight-profiles.mjs';
 import * as T from './vendor/three.module.min.js';
 import {VEHICLES,getVehicle,createVehicle,disposeVehicle} from './vehicle-catalog.mjs';
 import {REGIONS} from './world.mjs';
+import {attachFloatDepth} from './render-depth.mjs';
 const STORAGE_KEY='skyward.flight-selection.v1';
 export function normalizeSelection(value={}){return {vehicle:getVehicle(value?.vehicle).id,region:REGIONS.some(r=>r.id===value?.region)?value.region:REGIONS[0].id}}
 export function loadSelection(){try{return normalizeSelection(JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'))}catch{return normalizeSelection()}}
@@ -13,6 +14,8 @@ export function saveSelection(value){try{localStorage.setItem(STORAGE_KEY,JSON.s
 // Readback is needed to copy an offscreen target to 2D without another WebGL context.
 export function createPreviewCapture(renderer,width,height){
  const target=new T.WebGLRenderTarget(width,height);target.texture.colorSpace=T.SRGBColorSpace;
+ // Reversed depth needs the same float attachment as the flight feed.
+ if(renderer.capabilities?.reversedDepthBuffer)attachFloatDepth(target);
  const pixels=new Uint8Array(width*height*4);
  const rows=Array.from({length:height},(_,row)=>pixels.subarray(row*width*4,(row+1)*width*4));
  let disposed=false,canvas=null,context=null,data=null;

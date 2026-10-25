@@ -73,8 +73,8 @@ function crownGeometry(species,detail){
 
 export function createForestVisuals({random,terrainHeight,nearestRegion,count=700}){
   const records=forestRecords(random,terrainHeight,nearestRegion,count),group=new T.Group();group.name='authored-forest';
-  const canopyMaterial=new T.MeshStandardMaterial({vertexColors:true,roughness:1});
-  const barkMaterial=new T.MeshStandardMaterial({color:'#655c49',roughness:1});
+  const canopyMaterial=new T.MeshLambertMaterial({vertexColors:true});
+  const barkMaterial=new T.MeshLambertMaterial({color:'#655c49'});
   const trunkGeometry=new T.CylinderGeometry(.6,.9,8,5).rotateX(Math.PI/2);
   // Cylinder V remains root-to-tip after its +Z rotation; use two mirrored
   // U spans around the trunk as for crown masses.

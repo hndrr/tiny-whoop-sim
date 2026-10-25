@@ -13,7 +13,7 @@ let shader;
 function makeHarness({hdr=false,reduced=false,listens=true}={}){
  const media={matches:reduced},listeners=new Map(),elements=new Map(),classes=new Map();
  if(listens)media.addEventListener=(name,fn)=>{assert.equal(name,'change');listeners.set('motion',fn)};
- const context={T,createFlightRenderTarget,colorManaged:hdr,matchMedia(query){assert.equal(query,'(prefers-reduced-motion: reduce)');return media},
+ const context={T,createFlightRenderTarget,colorManaged:hdr,reversedDepth:false,renderLevel:{chaseScale:1,msaa:0},matchMedia(query){assert.equal(query,'(prefers-reduced-motion: reduce)');return media},
   innerWidth:390,innerHeight:844,fpv:true,flightStarted:true,renderer:{ratio:1.25,setSize(w,h){this.width=w;this.height=h},getPixelRatio(){return this.ratio}},
   camera:new T.PerspectiveCamera(105,1,.025,20000),chaseCamera:{reset(){}},keys:new Set(),clearSticks(){},updateHUD(){},
   precision:{mission:{active:false,retry(){}}},flightSelection:{reset(){}},s:{crashed:false,paused:true,reset(){}},

@@ -7,6 +7,9 @@ import {SOLIDS} from './dist/stage.mjs';
 import {createTerrainGeometry} from './dist/terrain-visuals.mjs';
 import {surfaceBoxGeometry} from './dist/surface-materials.mjs';
 import {groundSlabPlacement,coveredSupportPlacement,groundSurfaceGeometry,SURFACE_LAYERS} from './dist/render-surfaces.mjs';
+import {chooseDepthMode,rendererDepthOptions,attachFloatDepth} from './dist/render-depth.mjs';
+import {ATMOSPHERE} from './dist/atmosphere.mjs';
+import {OCEAN,coastDepthTexture,createOceanMaterial} from './dist/ocean-surface.mjs';
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8'),selector=readFileSync(new URL('./dist/flight-selector.mjs',import.meta.url),'utf8');
 const snapshot=JSON.stringify({SOLIDS,WORLD_OBJECTS});
 const top=o=>o.position[2]+o.size[2]/2,bottom=o=>o.position[2]-o.size[2]/2;
@@ -72,8 +75,8 @@ assert(main.includes('for(const o of SOLIDS)box(o.position,o.size,stageMats[o.ma
 assert(main.includes('const view=coveredSupportPlacement(o);m=box(view.position,view.size,stageMats[o.material]||yellow,regionGroups[o.region],true)'));
 // Real custom ShaderMaterial construction, with no GPU. Include expansion checks
 // catch missing chunks/helpers; they do not claim driver shader compilation.
-const sky=runInNewContext(between(main,'const skyGeo=','const oceanMat=')+';({skyMat})',{T,scene}).skyMat;
-const ocean=runInNewContext(between(main,'const oceanMat=','const airfieldStart=')+';({oceanMat})',{T,mesh(){}}).oceanMat;
+const sky=runInNewContext(between(main,'const skyGeo=','const oceanMat=')+';({skyMat})',{T,scene,ATMOSPHERE}).skyMat;
+const ocean=runInNewContext(between(main,'const oceanMat=','const airfieldStart=')+';({oceanMat})',{T,mesh(){return {}},OCEAN,coastDepthTexture,createOceanMaterial,coarsePointer:false}).oceanMat;
 const backdrop=runInNewContext(between(selector,'function createBackdrop(){','function releaseCapture()')+';createBackdrop()',{T});
 const contact=backdrop.children[1].material;
 function expand(shader){return shader.replace(/#include <([\w]+)>/g,(_,name)=>{assert.equal(typeof T.ShaderChunk[name],'string');return expand(T.ShaderChunk[name])})}
@@ -86,10 +89,18 @@ for(const material of [sky,ocean,contact]){
  assert.equal((vertex.match(/varying float vFragDepth;/g)||[]).length,1);assert.equal((fragment.match(/uniform float logDepthBufFC;/g)||[]).length,1);
 }
 assert.equal(backdrop.children[0].material.depthTest,false);assert.equal(backdrop.children[0].material.depthWrite,false);
-assert(main.includes('antialias:true,logarithmicDepthBuffer:true,powerPreference:'));
+// Reversed float depth where EXT_clip_control exists; logarithmic depth stays the
+// fallback and the ?depth=log comparison path. Canvas MSAA is off because the
+// scene never rendered into the multisampled default framebuffer.
+assert(main.includes("const depthMode=chooseDepthMode();let renderer;try{renderer=new T.WebGLRenderer({canvas:$('world'),antialias:false,...rendererDepthOptions(depthMode),powerPreference:"));
+assert.equal(chooseDepthMode({search:'',probe:()=>true}),'reversed');assert.equal(chooseDepthMode({search:'',probe:()=>false}),'logarithmic');
+assert.equal(chooseDepthMode({search:'?depth=log',probe:()=>true}),'logarithmic','explicit comparison path');
+assert.deepEqual(rendererDepthOptions('reversed'),{reversedDepthBuffer:true});assert.deepEqual(rendererDepthOptions('logarithmic'),{logarithmicDepthBuffer:true});
+{const t=attachFloatDepth(new T.WebGLRenderTarget(4,2));assert.equal(t.depthTexture.type,T.FloatType);assert.deepEqual([t.depthTexture.image.width,t.depthTexture.image.height],[4,2]);t.dispose()}
 assert(main.includes('PerspectiveCamera(105,1,.025,20000)'),'near clipping, FOV and world reach remain unchanged');
 const vendor=readFileSync(new URL('./dist/vendor/three.module.min.js',import.meta.url),'utf8');
 assert(vendor.includes('"logDepthBufFC",2/(Math.log(e.far+1)/Math.LN2)'),'pinned renderer updates log factor for every flight/preview camera');
+assert(vendor.includes('c=!0===n.reversedDepthBuffer&&t.has("EXT_clip_control")'),'pinned renderer only reverses depth with clip control');
 assert(T.ShaderChunk.logdepthbuf_fragment.includes('vIsPerspective == 0.0 ? gl_FragCoord.z'),'orthographic shadow-map depth retains ordinary mapping');
 // Quantized depth models use actual common-ray intersections with parallel
 // planes. A grazing view increases the ray separation; it must not be modeled
@@ -98,13 +109,17 @@ const near=.025,far=20000,levels=2**24-1,f32=Math.fround;
 const conventional=d=>far/(far-near)-far*near/((far-near)*d);
 const logarithmic=d=>f32(f32(Math.log2(f32(1+d)))*f32(1/Math.log2(far+1)));
 const quantize=v=>Math.round(v*levels);
-let oldTies=0,checks=0,minSteps=Infinity;
+// Reversed [0,1] depth stored as float32: n(f-d)/(d(f-n)). Steps count the
+// representable floats between the two stored values.
+const reversed=d=>Math.fround(near*(far-d)/(d*(far-near))),bits=v=>new Int32Array(new Float32Array([v]).buffer)[0];
+let oldTies=0,checks=0,minSteps=Infinity,minReversedSteps=Infinity;
 for(const [distance,height,clearance] of [[8,1.2,.018],[30,1.2,.018],[100,100,.013],[150,150,.013],[250,250,.013],[500,500,.013],[950,950,.013],[1500,1000,.018],[2400,1500,.02]]){
  const nearer=distance*(height-clearance)/height,oldSteps=quantize(conventional(distance))-quantize(conventional(nearer)),steps=quantize(logarithmic(distance))-quantize(logarithmic(nearer));
- if(oldSteps===0)oldTies++;assert(steps>=6,'log-depth resolves representative corrected surface layers despite float32 rounding');minSteps=Math.min(minSteps,steps);checks++;
+ if(oldSteps===0)oldTies++;assert(steps>=6,'log-depth resolves representative corrected surface layers despite float32 rounding');minSteps=Math.min(minSteps,steps);
+ const reversedSteps=bits(reversed(nearer))-bits(reversed(distance));assert(reversedSteps>=steps,'reversed float depth resolves each layer at least as well as log depth');minReversedSteps=Math.min(minReversedSteps,reversedSteps);checks++;
 }
 assert(oldTies>=4,'old mapping collapses several aerial layers to the same stored depth');
 for(const [n,f] of [[.025,20000],[.1,20000],[.001,10]])for(const d of [n,(n+f)/2,f]){const depth=Math.log2(1+d)/Math.log2(f+1);assert(depth>0&&depth<=1)}
 for(const mesh of terrainMeshes.values())mesh.geometry.dispose();terrainMaterial.dispose();for(const mesh of scene.children)mesh.geometry.dispose();asphalt.dispose();other.dispose();sky.dispose();ocean.dispose();for(const mesh of backdrop.children){mesh.geometry.dispose();mesh.material.dispose()}
-console.log('PASS: nine indoor floors above actual near/far terrain, separate paving layer, six covered supports, immutable collision records, three custom depth shaders and preview/orthographic contracts',JSON.stringify({floorSamples,minimumGap,oldTies,checks,minSteps}));
+console.log('PASS: nine indoor floors above actual near/far terrain, separate paving layer, six covered supports, immutable collision records, three custom depth shaders and preview/orthographic contracts',JSON.stringify({floorSamples,minimumGap,oldTies,checks,minSteps,minReversedSteps}));
 console.log('CPU geometry/depth/source checks only. No GPU reproduction, driver shader compilation, visual clearance approval, or mobile performance guarantee.');
