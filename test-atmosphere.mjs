@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as T from './dist/vendor/three.module.min.js';
-import {ATMOSPHERE,ATMOSPHERE_CHUNKS,installAtmosphere} from './dist/atmosphere.mjs';
+import {ATMOSPHERE,ATMOSPHERE_CHUNKS,CLOUDS,CLOUD_GLSL,installAtmosphere} from './dist/atmosphere.mjs';
+import {createOceanMaterial} from './dist/ocean-surface.mjs';
+import {applyTerrainShading} from './dist/terrain-visuals.mjs';
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
 // Installation replaces exactly the four fog chunks and keeps their contracts:
 // vFogDepth, fogColor/fogDensity uniforms and a final mix into gl_FragColor.
@@ -28,3 +30,12 @@ assert(haze.every((v,i)=>Math.abs(v-[srgb.r,srgb.g,srgb.b][i])<1e-3),'sky horizo
 assert(main.includes('uniforms:{sunDir:{value:new T.Vector3(...ATMOSPHERE.sunDirection)},clock:{value:0}}'));assert(main.includes('skyMat.uniforms.clock=oceanMat.uniforms.clock;'));
 console.log('PASS: four fog chunks replaced with height-averaged exp2 fog, sea-level FogExp2 parity, thinner aloft, sun-side tint, matched sky haze and shared clock');
 console.log('Numeric/source checks only; rendered appearance needs browser verification.');
+// One cloud layer: the sky offsets by the camera on the same plane the ground
+// shadows project to, so a cloud overhead and its shadow agree.
+{const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
+ assert(main.includes('cloudPlane(cameraPosition.xy,clock)')&&main.includes('terrainMat.userData.cloudClock=oceanMat.uniforms.clock;'));
+ assert(createOceanMaterial({coast:new T.Texture(),waveCount:4}).fragmentShader.includes('float shade=cloudShadow(vWorld,clock);'));
+ const m=new T.MeshLambertMaterial();m.userData.cloudClock={value:3};applyTerrainShading(m,{detailMean:.5});const shader={uniforms:{},vertexShader:T.ShaderLib.lambert.vertexShader,fragmentShader:T.ShaderLib.lambert.fragmentShader};m.onBeforeCompile(shader);
+ assert.equal(shader.uniforms.cloudClock,m.userData.cloudClock);assert(shader.fragmentShader.includes('reflectedLight.directDiffuse*=1.-cloudShadow(vTerrainWorld,cloudClock);'));
+ assert(CLOUD_GLSL.includes((CLOUDS.scale/CLOUDS.height).toFixed(7))&&CLOUDS.shadow<.5,'partial shade: direct sun only');}
+console.log('PASS: shared cloud layer wired into sky, terrain direct light and sea');
