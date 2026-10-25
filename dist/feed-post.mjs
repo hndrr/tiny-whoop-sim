@@ -85,7 +85,9 @@ export function createFeedPost({target,colorManaged=false}){
     u.blur.value.set(probe.x*.5+.5,probe.y*.5+.5,(ahead?1:-1)*speed*step*FEED.motion.shutter);
     u.blurShift.value.set(-(motion.yawRate||0)*step*FEED.motion.shutter/hfov,(motion.pitchRate||0)*step*FEED.motion.shutter/(camera.fov*Math.PI/180));u.blurTaps.value=taps;}
    else{u.blurTaps.value=0;u.blur.value.set(.5,.5,0);u.blurShift.value.set(0,0)}
-   u.jello.value.set(reducedMotion?0:Math.max(-1,Math.min(1,(motion.yawRate||0)*.25))*FEED.jello*(fpv?1:.6),reducedMotion?0:(motion.shake||0)*.35);
+   // The scanline wobble only suits the soft-mounted chase camera; on the
+   // hard-mounted FPV lens it read as a sideways jitter every frame.
+   u.jello.value.set(reducedMotion?0:Math.max(-1,Math.min(1,(motion.yawRate||0)*.25))*FEED.jello*(fpv?1:.6),reducedMotion||fpv?0:(motion.shake||0)*.35);
    u.dofStrength.value=!fpv&&drone?level.dof??1:0;if(drone)u.focus.value=Math.max(.2,camera.position.distanceTo(drone.position));
   }};
 }

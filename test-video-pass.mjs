@@ -31,6 +31,16 @@ for(const fpv of [true,false]){
  const still=createCameraMotion(),c2=new T.PerspectiveCamera(fpv?105:72,1,.025,1000);for(let i=0;i<60;i++){c2.quaternion.identity();still.apply(c2,1/60,state,{fpv,clearance:.8,reducedMotion:true})}
  assert(c2.quaternion.equals(new T.Quaternion()),'reduced motion: no shake or bank follow');assert.equal(c2.fov,fpv?105:72);assert.equal(still.output.yawRate,0);
 }
+// FPV is hard-mounted: no yaw sway at all, only a sub-pixel pitch vibration.
+{const camera=new T.PerspectiveCamera(105,1,.025,1000),motion=createCameraMotion(),state={x:0,y:0,z:1,vx:0,vy:40,vz:0,heading:0,pitch:0,roll:0,throttle:1,paused:false,crashed:false},dir=new T.Vector3();
+ const bound=CAMERA_MOTION.vibration.fpv*(.35+state.throttle)+1e-9;
+ for(let i=0;i<240;i++){camera.quaternion.identity();motion.apply(camera,1/60,state,{fpv:true,clearance:.5});camera.getWorldDirection(dir);
+  assert(Math.abs(Math.atan2(dir.x,-dir.z))<1e-9,'FPV camera never yaws against the airframe');assert(Math.abs(Math.asin(dir.y))<=bound,'FPV pitch vibration stays sub-pixel')}
+ // Frame-time jitter on a steady turn must not flicker the skew rate.
+ const rates=createCameraMotion(),c3=new T.PerspectiveCamera(105,1,.025,1000);let heading=0,seen=[];
+ for(let i=0;i<240;i++){const dt=i%2?1/50:1/75;heading+=1.2*dt+(i%3-1)*.004;c3.quaternion.identity();rates.apply(c3,dt,{...state,heading},{fpv:true,clearance:.5});if(i>60)seen.push(rates.output.yawRate)}
+ assert(Math.max(...seen)-Math.min(...seen)<.6,'smoothed yaw rate');assert(Math.abs(seen.reduce((a,b)=>a+b)/seen.length-1.2)<.15,'still tracks the real turn rate');
+ const hover=createCameraMotion();for(let i=0;i<60;i++){c3.quaternion.identity();hover.apply(c3,1/60,{...state,heading:(i%2)*.0002},{fpv:true})}assert.equal(hover.output.yawRate,0,'tiny rates fall in the deadzone');}
 // Rotor dust over land only, within 1.2 m and while flying; contact shade under a low hover.
 {const scene=new T.Scene(),fx=createAirframeEffects(scene),hover={x:-60,y:-30,z:terrainHeight(-60,-30)+.4,throttle:.6,paused:false,crashed:false};
  for(let i=0;i<60;i++)fx.update(1/60,hover);assert(fx.alive>40&&fx.alive<=AIRFRAME_FX.maxDust);assert(fx.dust.visible&&fx.shade.visible);
@@ -45,6 +55,7 @@ for(const fpv of [true,false]){
  const state={vx:0,vy:0,vz:0,paused:false};post.update(1/60,{camera,state,fpv:false,drone,level:QUALITY_LEVELS[0]});
  assert(Math.abs(u.sun.value.x-.5)<1e-3&&Math.abs(u.sun.value.y-.5)<1e-3&&u.sun.value.z>0,'sun at the centre when looking at it');assert.equal(u.blurTaps.value,0,'no blur at rest');assert.equal(u.dofStrength.value,1);
  state.vy=40;post.update(1/60,{camera,state,fpv:true,drone,level:QUALITY_LEVELS[0]});assert.equal(u.blurTaps.value,6);assert.equal(u.dofStrength.value,0,'FPV keeps everything in focus');
+ assert.equal(u.jello.value.y,0,'no per-frame scanline wobble on the FPV lens');post.update(1/60,{camera,state,fpv:false,drone,motion:{yawRate:0,pitchRate:0,shake:.01},level:QUALITY_LEVELS[0]});assert(u.jello.value.y>0,'chase camera keeps its soft-mount wobble');
  post.update(1/60,{camera,state,fpv:true,drone,level:QUALITY_LEVELS.at(-1)});assert.equal(u.blurTaps.value,0,'low quality drops motion blur');
  post.update(1/60,{camera,state,fpv:true,drone,reducedMotion:true,level:QUALITY_LEVELS[0]});assert.equal(u.blurTaps.value,0);assert.deepEqual(u.jello.value.toArray(),[0,0]);}
 // Glow marks compose with existing hooks and alter only feed alpha.
