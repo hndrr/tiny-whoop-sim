@@ -4,7 +4,7 @@ import * as T from './vendor/three.module.min.js';
 // sliding compass tape with a HOME marker, a rotating HOME arrow and a small
 // vertical-speed gauge. Presentation only; style writes happen only when a
 // rounded value changes, which keeps per-frame DOM work small on phones.
-export const OSD=Object.freeze({compassSpan:100,ladder:[-20,-10,10,20],vsiRange:6,pixel:.5,angle:.1,ladderReach:100,markerEdge:.12});
+export const OSD=Object.freeze({compassSpan:100,ladder:[-20,-10,10,20],vsiRange:12,pixel:.5,angle:.1,ladderReach:100,markerEdge:.12});
 export const wrap360=d=>((d%360)+360)%360;
 // Compass heading as shown in HDG: flight heading is counter-clockwise radians.
 export const headingDegrees=heading=>wrap360(-heading*180/Math.PI);
@@ -20,7 +20,9 @@ export function compassShift(hdg,span=OSD.compassSpan){return (span/2-(wrap360(h
 // HOME marker position in the compass window (0..1), pinned inside the faded
 // edges when off-tape so it still points the way home.
 export function compassMarker(relative,span=OSD.compassSpan){const edge=OSD.markerEdge;return {at:Math.min(1-edge,Math.max(edge,.5+relative/span)),off:Math.abs(relative)>span*(.5-edge)}}
-export function vsiFill(vz,range=OSD.vsiRange){return Math.max(-1,Math.min(1,vz/range))}
+// Square-root scale: a few m/s near the ground stays readable and the fast
+// high-air climb/descent still reaches the ends (full at vsiRange).
+export function vsiFill(vz,range=OSD.vsiRange){return Math.sign(vz)*Math.min(1,Math.sqrt(Math.abs(vz)/range))}
 const a=new T.Vector3(),b=new T.Vector3(),forward=new T.Vector3();
 // Horizon (0 degrees) and ladder lines at true elevations, projected through
 // the camera: screen centre point and angle of each line, or hidden when the

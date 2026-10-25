@@ -74,7 +74,7 @@ The always-visible BRIGHTNESS slider adjusts the 3D flight video in both FPV and
 
 ## Handling and controlled descent
 
-All five aircraft share the same normalized keyboard, mouse and touch path and stabilized vertical controls. W / stick up climbs; S / stick down descends. Full descent reaches approximately 8 m/s high above surfaces, easing continuously near the nearest terrain, sea or solid surface below. Overhead roofs do not count as ground when flying indoors. Releasing throttle brakes toward hover; held descent still moves downward and can hit structures or ditch in water. This is assistance, not automatic landing or collision avoidance.
+All five aircraft share the same normalized keyboard, mouse and touch path and stabilized vertical controls. W / stick up climbs; S / stick down descends. Below 30 m clearance, full climb is 5 m/s and full descent is about 8 m/s, easing continuously near the nearest terrain, sea or solid surface below. Above 30 m, both limits grow with height along a constant-deceleration curve, up to 25 m/s climb and 36 m/s descent. A held full descent therefore slows by itself on the way down: 300 m to the ground takes about 15 s instead of 38 s, and the ground to 100 m about 11 s instead of 19 s. Release and reversal brake harder at those speeds. Overhead roofs do not count as ground when flying indoors. Releasing throttle brakes toward hover; held descent still moves downward and can hit structures or ditch in water. This is assistance, not automatic landing or collision avoidance.
 
 Relative tuning (WHOOP 75 = 100):
 - WHOOP 75: acceleration 100, turn 100, top speed 100

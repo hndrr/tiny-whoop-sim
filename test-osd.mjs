@@ -11,7 +11,7 @@ assert.deepEqual(labels,{N:0,E:90,S:180,W:270});assert(ticks.every(t=>t.at>=0&&t
 // The heading's tick sits at the window centre for any heading, including 0/360.
 for(const hdg of [0,1,90,179.5,270,359.9]){const window=OSD.compassSpan/720,tick=(wrap360(hdg)+180)/720;close(tick+compassShift(hdg)/100,window/2,1e-9,`centred ${hdg}`)}
 assert.deepEqual(compassMarker(0),{at:.5,off:false});assert.equal(compassMarker(170).at,1-OSD.markerEdge);assert(compassMarker(170).off&&compassMarker(-170).at===OSD.markerEdge);
-assert.equal(vsiFill(OSD.vsiRange*3),1);assert.equal(vsiFill(-OSD.vsiRange*3),-1);assert.equal(vsiFill(0),0);
+assert.equal(vsiFill(OSD.vsiRange*3),1);assert.equal(vsiFill(-OSD.vsiRange*3),-1);assert.equal(vsiFill(0),0);close(vsiFill(OSD.vsiRange/4),.5);close(vsiFill(-OSD.vsiRange/4),-.5);assert(vsiFill(1)>vsiFill(.5)&&vsiFill(8)<1,'readable from a slow hover drift to the low-air limit');
 // Horizon projected from the real camera: centred when level, below the centre
 // when the lens tilts up, rotated against the bank, ladder above for climb.
 const camera=new T.PerspectiveCamera(105,16/9,.025,1000),W=1600,H=900,f=H/2/Math.tan(105*Math.PI/360);
@@ -30,7 +30,7 @@ const osd=createOsd(doc);assert.equal(body.children.length,2);assert.equal(osd.a
 const state={heading:0,vz:1};aim(0);osd.update(state,{camera,fpv:true,bearing:90,width:W,height:H});assert.equal(osd.ahi.hidden,false);
 const count=()=>[...nodes.values(),...osd.ahi.children,...osd.compass.children].reduce((n,node)=>n+node.writes,0),before=count();
 osd.update(state,{camera,fpv:true,bearing:90,width:W,height:H});assert.equal(count(),before,'no style writes for an unchanged frame');
-assert.equal(nodes.get('homeArrow').style.transform,'rotate(90deg)');assert.equal(nodes.get('vsiFill').style.transform,`scaleY(${(Math.round(1/OSD.vsiRange/.02)*.02).toFixed(2)})`);
+assert.equal(nodes.get('homeArrow').style.transform,'rotate(90deg)');assert.equal(nodes.get('vsiFill').style.transform,`scaleY(${(Math.round(Math.sqrt(1/OSD.vsiRange)/.02)*.02).toFixed(2)})`);
 osd.update(state,{camera,fpv:false,bearing:90,width:W,height:H});assert.equal(osd.ahi.hidden,true,'horizon is FPV only');
 // Wiring: one shared HUD update, existing telemetry ids kept, no race timer.
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8'),html=readFileSync(new URL('./dist/index.html',import.meta.url),'utf8');
