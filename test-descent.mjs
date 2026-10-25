@@ -15,28 +15,41 @@ function advance(state,lift,seconds,dt=1/60){
   return state;
 }
 
-// Preserve the established ~5 m/s ascent, then reverse without a long float.
-const climb=advance(airborne(),1,3);
+// Low air (below fastClearance) keeps the established ~5 m/s ascent, then
+// reverses without a long float.
+const climb=advance(airborne(2),1,3);
 assert(climb.vz>4.99&&climb.vz<=5);
-assert(climb.z>113&&climb.z<114);
+assert(climb.z>15&&climb.z<16);
 const reversalStart={...climb};
 advance(climb,-1,.35);
 assert(climb.vz<0,'held down must reverse a full-speed climb in less than 0.35 s');
 assert(climb.z-reversalStart.z<.8,'climb reversal overshoot should remain below 0.8 m');
 advance(climb,-1,1.65);
-assert(climb.vz< -7.95&&climb.vz>=-8);
-assert(climb.z<reversalStart.z-7);
-console.log('PASS: 5 m/s climb, quick climb-to-descent reversal, bounded acceleration');
+assert(Math.abs(climb.vz-verticalTarget(-1,climb.z-VERTICAL_FLIGHT.contactOffset))<.8,'descent tracks the easing near-surface limit with a short lag');
+assert(climb.z<reversalStart.z-6);
+console.log('PASS: low-air 5 m/s climb, quick climb-to-descent reversal, bounded acceleration');
 
-// A long descent should not inherit the former ~4.9 m/s vertical drag ceiling.
+// High air: climb and descent limits grow with clearance, continuously.
+const highClimb=advance(airborne(100),1,3);
+assert(highClimb.vz>20&&highClimb.vz<=VERTICAL_FLIGHT.maxClimbSpeed,`high-air climb ${highClimb.vz}`);
+let climbTime=0;const toHundred=airborne(5);
+while(toHundred.z<100&&climbTime<30){advance(toHundred,1,1/60);climbTime+=1/60}
+assert(climbTime>9.5&&climbTime<11.5,`5→100 m climb took ${climbTime}s (was ~19 s)`);
+
+// A long descent is fast high up and brakes itself along the descent curve,
+// arriving in the near-surface zone at the familiar 3.4 m/s.
 const high=advance(airborne(),-1,2);
-assert(high.vz< -7.98);
+assert(high.vz< -20);
 let descentTime=0;
 const highToLow=airborne();
 while(highToLow.z>1&&descentTime<20){advance(highToLow,-1,1/60);descentTime+=1/60}
-assert(descentTime>13&&descentTime<14,`100→1 m descent took ${descentTime}s`);
+assert(descentTime>8&&descentTime<9.5,`100→1 m descent took ${descentTime}s (was ~13.5 s)`);
 assert(highToLow.vz< -3.4&&highToLow.vz> -3.6);
-console.log(`PASS: high-altitude descent reaches 8 m/s; 100→1 m in ${descentTime.toFixed(2)} s`);
+{const deep=airborne(300);let t=0,fastest=0,overCurve=0;
+ while(deep.z>1&&t<30){advance(deep,-1,1/60);t+=1/60;fastest=Math.min(fastest,deep.vz);overCurve=Math.max(overCurve,-deep.vz+verticalTarget(-1,deep.z-VERTICAL_FLIGHT.contactOffset))}
+ assert(t>13.5&&t<15.5,`300→1 m took ${t}s (was ~38 s)`);assert(fastest>=-VERTICAL_FLIGHT.maxDescentSpeed-1e-9);assert(deep.vz< -3.4&&deep.vz> -3.6);
+ assert(overCurve<3,'the braking curve is tracked closely, so held descent never dives faster than the limit below it');}
+console.log(`PASS: high-air descent up to ${VERTICAL_FLIGHT.maxDescentSpeed} m/s with a braking curve; 100→1 m in ${descentTime.toFixed(2)} s`);
 
 // Release deliberately brakes to a hover; it does not recapture an old height.
 for(const velocity of [-8,5]){
@@ -51,18 +64,29 @@ for(const velocity of [-8,5]){
 }
 const hover=advance(airborne(),0,10);
 close(hover.z,100);close(hover.vz,0);
-console.log('PASS: release brakes in under one second without bounce or altitude recapture');
+// Releasing a fast high-air descent brakes harder, without a bounce.
+{const fast=advance(airborne(300),-1,5);assert(fast.vz< -35);const at=fast.z;advance(fast,0,2);
+ assert(Math.abs(fast.vz)<.05&&fast.vz<=0);assert(at-fast.z<20,`release overshoot ${at-fast.z} m`);
+ const turn=advance(airborne(300),-1,5);advance(turn,1,2.5);assert(turn.vz>0,'full reversal from 36 m/s within 2.5 s');}
+console.log('PASS: release brakes without bounce or altitude recapture, including from a 36 m/s descent');
 
 // Proportional stick inputs stay proportional at every clearance. Full down is
 // reduced progressively near surfaces, but never commands an automatic stop.
-for(const clearance of [0,.2,1,2,5,10,17,18,40]){
+for(const clearance of [0,.2,1,2,5,10,17,18,24,30]){
   const full=verticalTarget(-1,clearance);
   assert(full<=-3.4&&full>=-8);
   for(const lift of [-.001,-.1,-.2,-.5,-1])close(verticalTarget(lift,clearance),-lift*full);
   close(verticalTarget(1,clearance),5);
   close(verticalTarget(.2,clearance),1);
 }
-close(verticalTarget(-1,0),-3.4);close(verticalTarget(-1,18),-8);
+close(verticalTarget(-1,0),-3.4);close(verticalTarget(-1,18),-8);close(verticalTarget(-1,30),-8);
+// Above fastClearance: continuous at the boundary, growing, capped, still proportional.
+close(verticalTarget(-1,30+1e-9),-8,1e-3);close(verticalTarget(1,30+1e-9),5,1e-3);
+{let lastDown=-8,lastUp=5;for(const clearance of [31,40,60,100,200,1000]){const down=verticalTarget(-1,clearance),up=verticalTarget(1,clearance);
+ assert(down<lastDown||down===-VERTICAL_FLIGHT.maxDescentSpeed);assert(up>lastUp||up===VERTICAL_FLIGHT.maxClimbSpeed);lastDown=down;lastUp=up;
+ close(down,-Math.min(VERTICAL_FLIGHT.maxDescentSpeed,Math.sqrt(64+2*VERTICAL_FLIGHT.descentBrake*(clearance-30))));
+ for(const lift of [-.25,-.5])close(verticalTarget(lift,clearance),-lift*down);close(verticalTarget(.5,clearance),.5*up)}
+ close(verticalTarget(-1,1000),-VERTICAL_FLIGHT.maxDescentSpeed);close(verticalTarget(1,1000),VERTICAL_FLIGHT.maxClimbSpeed);}
 assert(verticalTarget(-1,5)>verticalTarget(-1,10));
 assert(verticalTarget(-1,10)>verticalTarget(-1,18));
 for(const input of [-.001,-.2,-1]){
@@ -109,9 +133,10 @@ assert.deepEqual(stepVertical(original,NaN,.02),stepVertical(original,0,.02));
 for(const dt of [1/30,1/60,1/144,1/240,.2]){
   const state=advance(airborne(30),-1,4,dt);
   close(state.z,4.14,.01);close(state.vz,-4.19,.01);
+  // High-air targets follow clearance, so substep size matters only slightly.
   const fixed=advance(airborne(100,0,0,5),-1,2,dt);
   const reference=advance(airborne(100,0,0,5),-1,2,1/120);
-  close(fixed.z,reference.z,1e-9);close(fixed.vz,reference.vz,1e-9);
+  close(fixed.z,reference.z,.05);close(fixed.vz,reference.vz,.05);
 }
 console.log('PASS: pure update, zero/invalid timesteps, normalized controls and 30–240 Hz stability');
 
@@ -131,7 +156,7 @@ console.log('PASS: integrated keyboard/touch descent and full authority while ba
 
 const aircraft=Object.keys(FLIGHT_PROFILES).map(id=>{const state=flight(200);state.setAircraft(id);return state});
 assert.equal(aircraft.length,5);
-for(const [lift,seconds] of [[1,3],[-1,2],[0,1]]){
+for(const [lift,seconds] of [[1,3],[-1,2],[0,2]]){
   for(let i=0;i<seconds*60;i++)for(const state of aircraft)state.step(1/60,new Set(),{throttle:lift,pitch:.8,roll:.6,yaw:.2});
   for(const state of aircraft){close(state.z,aircraft[0].z,1e-8);close(state.vz,aircraft[0].vz,1e-8)}
 }
