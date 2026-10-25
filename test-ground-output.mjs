@@ -15,7 +15,8 @@ assert.equal(draws,65536,'map replacement preserves all subsequent seeded scener
 assert.equal(texture.colorSpace,T.SRGBColorSpace);
 assert.deepEqual([...generated.slice(0,4)],[222,222,222,255],'grass detail is neutral; terrain vertex colors supply the hue once');
 assert.equal(texture.repeat.x,100);assert.equal(texture.repeat.y,100);
-const post=main.slice(main.indexOf('const postMat='),main.indexOf('bindBrightness(document'));
+// The video pass now lives in feed-post.mjs with the same transfer order.
+const post=readFileSync(new URL('./dist/feed-post.mjs',import.meta.url),'utf8');
 assert(post.includes("${colorManaged?'\\n#include <tonemapping_fragment>\\n':''}\\n#include <colorspace_fragment>\\n"),'sRGB output is unconditional, ACES remains opt-in');
 assert.equal((post.match(/#include <colorspace_fragment>/g)||[]).length,1);
 assert(post.indexOf('#include <colorspace_fragment>')<post.indexOf('float noise='),'analog noise stays in display space rather than being amplified by sRGB');

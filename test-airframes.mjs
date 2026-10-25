@@ -118,7 +118,10 @@ const baked=[];
 for(const preset of VEHICLES){
  const raw=createVehicle(preset.id);let rawMeshes=0;raw.group.traverse(o=>{if(o.isMesh)rawMeshes++});
  const model=bakeVehicle(createVehicle(preset.id));let meshes=0;model.group.traverse(o=>{if(o.isMesh)meshes++});
- assert.equal(model.propellers.length,4);assert(meshes<=14&&meshes<rawMeshes/2,`${preset.id}: ${meshes} flight meshes vs ${rawMeshes}`);
+ assert.equal(model.propellers.length,4);// Static parts + separate FPV-visible ducts + 4 props (blades, blur) + underglow.
+ assert(meshes<=15&&meshes<=rawMeshes/2,`${preset.id}: ${meshes} flight meshes vs ${rawMeshes}`);
+ const led=model.group.getObjectByName('underglow');assert(led&&led.material.userData.glow===1&&!led.castShadow);
+ model.group.userData.setView(true);assert(model.group.children.filter(c=>c.visible).every(c=>c.userData.batchTag==='fpv'||model.propellers.includes(c)),'FPV shows only ducts and props');model.group.userData.setView(false);assert(model.group.children.every(c=>c.visible))
  for(const prop of model.propellers){const blur=prop.children.find(c=>c.name==='prop-blur');assert(blur&&!blur.visible);assert.equal(prop.children.length,2,'merged blades plus blur disc');
   prop.userData.blur(1);assert(blur.visible&&prop.children.every(c=>c===blur||!c.visible));prop.userData.blur(0);assert(!blur.visible&&prop.children.every(c=>c===blur||c.visible))}
  const visible=new T.Box3();model.group.traverse(o=>{if(o.isMesh&&o.name!=='prop-blur')visible.expandByObject(o,true)});

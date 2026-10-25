@@ -34,7 +34,7 @@ assert(sun.target.position.distanceTo(new T.Vector3(40,30,2))<texel,'snapped fra
 shadows.invalidate();frame(new T.Vector3(40,30,2),{caster:drone,clearance:2});assert.equal(passes,9);
 // Main loop wiring: the old per-frame sun follow is replaced by the scheduler.
 assert(!main.includes('sun.position.set(s.x-80,s.y-95,s.z+140)'));
-assert(main.includes('shadowSchedule.update(drone.position,{caster:drone,clearance:surfaceClearance(s.x,s.y,s.z)})'));
+assert(main.includes('shadowSchedule.update({x:s.x,y:s.y,z:Math.min(s.z,s.z-surfaceClearance(s.x,s.y,s.z)+30)},{caster:drone,clearance:surfaceClearance(s.x,s.y,s.z)})'),'light frame stays near the ground under the aircraft');
 assert(main.includes('ocean.castShadow=false'));
 console.log('PASS: on-demand shadow map, texel-snapped re-centring, dynamic caster near ground, FPV visibility change and preview invalidation',JSON.stringify({passes}));
 console.log('CPU scheduling checks only; rendered shadow appearance and GPU savings need browser verification.');

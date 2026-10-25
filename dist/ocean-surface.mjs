@@ -66,10 +66,11 @@ vec3 n=normalize(vec3(-slope,1.)),r=reflect(-V,n);r.z=abs(r.z);
 float fresnel=.02+.98*pow(1.-max(dot(n,V),0.),5.),crest=clamp(height/.5,0.,1.);
 vec3 body=mix(vec3(.17,.43,.41),vec3(.035,.2,.24),smoothstep(.4,5.5,depth))*(.82+.36*crest);
 vec3 color=mix(body,skyReflection(r),clamp(fresnel*.92+.04,0.,1.));
-float sun=max(dot(r,sunDir),0.),soft=smoothstep(.05,3.,foot);color+=vec3(1.,.86,.62)*(pow(sun,mix(900.,90.,soft))*mix(5.,1.2,soft)+pow(sun,40.)*.06);
+float sun=max(dot(r,sunDir),0.),soft=smoothstep(.05,3.,foot),glint=pow(sun,mix(900.,90.,soft))*mix(5.,1.2,soft);color+=vec3(1.,.86,.62)*(glint+pow(sun,40.)*.06);
 float surf=(1.-smoothstep(.05,1.4,depth))*(.55+.45*sin(clock*1.3-depth*5.+oceanNoise(vWorld.xy*.15)*4.));color=mix(color,vec3(.9,.93,.92),smoothstep(.45,.9,surf*(.6+.6*oceanNoise(vWorld.xy*.9+clock*.2)))*.75);
 color=mix(color,mix(${SKY_HAZE},${SUN_HAZE},pow(max(dot(-V,sunDir),0.),8.)*.55),atmosphereFactor(${ATMOSPHERE.density.toFixed(6)},vViewDepth,cameraPosition.z,vWorld.z));
-gl_FragColor=sRGBTransferEOTF(vec4(clamp(color,0.,1.),1.));}`
+// Sun glints mark themselves in feed alpha for the video pass glow.
+gl_FragColor=sRGBTransferEOTF(vec4(clamp(color,0.,1.),1.-clamp(glint*.35,0.,.85)*(1.-atmosphereFactor(${ATMOSPHERE.density.toFixed(6)},vViewDepth,cameraPosition.z,vWorld.z))));}`
  });
 }
 

@@ -17,7 +17,10 @@ export function createStaticBatcher({groundHeight=()=>0,cell=STATIC_BATCH.cell,c
  // non-batched users of the same source material keep the original.
  function materialFor(source){
   if(!contact)return source;
-  if(!clones.has(source)){const clone=source.clone();clone.onBeforeCompile=contactShade;clone.userData={...source.userData,batchSource:source};clones.set(source,clone)}
+  if(!clones.has(source)){const clone=source.clone(),hook=source.onBeforeCompile,key=source.customProgramCacheKey.bind(source);
+   // Keep any hook the source carries (e.g. glow) and add contact shading.
+   clone.onBeforeCompile=function(shader,renderer){hook.call(this,shader,renderer);contactShade(shader)};clone.customProgramCacheKey=()=>`${key()}|contact`;
+   clone.userData={...source.userData,batchSource:source};clones.set(source,clone)}
   return clones.get(source);
  }
  const signature=geometry=>Object.keys(geometry.attributes).sort().join(',')+(geometry.index?':i':':n');
@@ -55,20 +58,20 @@ export function createStaticBatcher({groundHeight=()=>0,cell=STATIC_BATCH.cell,c
   for(const mesh of container.children){
    if(!mesh.isMesh||mesh.isInstancedMesh||mesh.children.length||mesh.userData.dynamic||Array.isArray(mesh.material)||!mesh.geometry.attributes.normal)continue;
    const matrix=new T.Matrix4().multiplyMatrices(inverse,mesh.matrixWorld),centre=new T.Vector3().setFromMatrixPosition(mesh.matrixWorld);
-   const key=[mesh.material.uuid,mesh.castShadow,mesh.receiveShadow,Math.floor(centre.x/cell),Math.floor(centre.y/cell),signature(mesh.geometry)].join('|');
+   const key=[mesh.material.uuid,mesh.castShadow,mesh.receiveShadow,Math.floor(centre.x/cell),Math.floor(centre.y/cell),signature(mesh.geometry),mesh.userData.batchTag??''].join('|');
    if(!groups.has(key))groups.set(key,[]);groups.get(key).push({mesh,matrix});
   }
   const created=[];
   for(const entries of groups.values()){
    const first=entries[0].mesh,merged=new T.Mesh(bake(entries),materialFor(first.material));
-   merged.castShadow=first.castShadow;merged.receiveShadow=first.receiveShadow;merged.name=`static-batch-${first.material.type}-${entries.length}`;merged.userData.batchedCount=entries.length;
+   merged.castShadow=first.castShadow;merged.receiveShadow=first.receiveShadow;merged.name=`static-batch-${first.material.type}-${entries.length}`;merged.userData.batchedCount=entries.length;if(first.userData.batchTag)merged.userData.batchTag=first.userData.batchTag;
    for(const {mesh} of entries)container.remove(mesh);
    container.add(merged);created.push(merged);
   }
   return created;
  }
  // Painted textures arrive after batching; copy them onto the batch clones.
- function syncMaterials(){for(const [source,clone] of clones){const onBeforeCompile=clone.onBeforeCompile,userData=clone.userData;clone.copy(source);clone.onBeforeCompile=onBeforeCompile;clone.userData=userData;clone.needsUpdate=true}}
+ function syncMaterials(){for(const [source,clone] of clones){const onBeforeCompile=clone.onBeforeCompile,key=clone.customProgramCacheKey,userData=clone.userData;clone.copy(source);clone.onBeforeCompile=onBeforeCompile;clone.customProgramCacheKey=key;clone.userData=userData;clone.needsUpdate=true}}
  return {batch,syncMaterials,materialFor,get materials(){return [...clones.values()]}};
 }
 
