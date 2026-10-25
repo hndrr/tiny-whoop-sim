@@ -14,7 +14,9 @@ for(const amount of [60,180,120,100]){slider.value=String(amount);slider.dispatc
 reset.dispatchEvent(new Event('click'));assert.equal(uniform.value,1);assert.equal(slider.value,'100');assert.equal(loadBrightness(storage),100);
 // One shared postprocess shader applies gain after the FPV-only block: chase works too.
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
-assert.ok(main.includes('brightness:{value:1}'));assert.ok(main.includes('uniform float brightness;'));assert.ok(main.includes('col*=inside;col*=brightness;gl_FragColor=vec4(col,1.);'));assert.ok(main.includes('bindBrightness(document,postMat.uniforms.brightness)'));
+const feedSource=readFileSync(new URL('./dist/feed-post.mjs',import.meta.url),'utf8');
+// The video pass lives in feed-post.mjs; brightness is still its last, feed-only gain.
+assert.ok(feedSource.includes('brightness:{value:1}'));assert.ok(feedSource.includes('uniform float brightness;'));assert.ok(feedSource.includes('col*=inside;col*=brightness;gl_FragColor=vec4(col,1.);'));assert.ok(main.includes('bindBrightness(document,postMat.uniforms.brightness)'));
 console.log('PASS: brightness range/default, invalid or blocked storage, repeated slider/reset, persistence and shared FPV/chase feed-only shader wiring');
 
 assert.equal(slider.blurred,undefined,'keyboard brightness editing retains focus');slider.dispatchEvent(new Event('pointerup'));slider.dispatchEvent(new Event('pointercancel'));assert.equal(slider.blurred,2,'pointer finish restores flight keyboard control');

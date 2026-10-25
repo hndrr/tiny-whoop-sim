@@ -20,7 +20,9 @@ assert.equal(container.children.filter(o=>o.isMesh).length,4,'original meshes ar
 const after=new T.Box3().setFromObject(container);for(const k of ['min','max'])assert(after[k].distanceTo(before[k])<1e-5,'world extent is unchanged');
 const redBatch=created.find(m=>m.userData.batchedCount===3);assert(redBatch);
 const uv=redBatch.geometry.attributes.uv.array;assert.deepEqual([...uv.slice(uv.length/3,uv.length/3*2)],[...uvBefore],'metre-scaled UVs are carried over');
-assert.equal(redBatch.material.userData.batchSource,red);assert.equal(redBatch.material.onBeforeCompile,contactShade);assert.equal(redBatch.material.userData.tileMeters,3);
+assert.equal(redBatch.material.userData.batchSource,red);
+// The clone composes the source's own hook (e.g. glow) with contact shading.
+const injected=m=>{const shader={vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader};m.onBeforeCompile(shader);return shader.vertexShader.includes('vBaseHeight=baseHeight;')};assert(injected(redBatch.material));assert(redBatch.material.customProgramCacheKey().endsWith('|contact'));assert.equal(redBatch.material.userData.tileMeters,3);
 // Contact height: grounded walls carry height above base; beam and slab do not.
 const heights=m=>[...m.geometry.attributes.baseHeight.array];
 assert(heights(redBatch).every(h=>h>=0&&h<=6+1e-5));assert(Math.max(...heights(redBatch))>5.99&&Math.min(...heights(redBatch))<1e-5);
@@ -30,7 +32,7 @@ assert.equal(slabBatch.castShadow,false);assert.equal(slabBatch.receiveShadow,tr
 // Shader injection uses chunks present in both lit material families.
 for(const name of ['meshphysical','meshlambert']){const shader={vertexShader:T.ShaderLib[name==='meshphysical'?'standard':'lambert'].vertexShader,fragmentShader:T.ShaderLib[name==='meshphysical'?'standard':'lambert'].fragmentShader};contactShade(shader);assert(shader.vertexShader.includes('vBaseHeight=baseHeight;'));assert(shader.fragmentShader.includes('smoothstep(0.,1.00,vBaseHeight)'))}
 // Late painted textures reach the clone, which keeps its contact shading.
-const painted=new T.Texture();red.map=painted;batcher.syncMaterials();assert.equal(redBatch.material.map,painted);assert.equal(redBatch.material.onBeforeCompile,contactShade);assert.equal(redBatch.material.userData.batchSource,red);
+const painted=new T.Texture();red.map=painted;batcher.syncMaterials();assert.equal(redBatch.material.map,painted);assert(injected(redBatch.material));assert.equal(redBatch.material.userData.batchSource,red);
 // Repeated meshes become one InstancedMesh per geometry/material.
 const parent=new T.Group(),holder=new T.Group();holder.position.set(3,4,5);holder.rotation.z=.4;const posts=[];
 for(let i=0;i<6;i++){const m=new T.Mesh(unit,grey);m.position.set(i,0,1);m.scale.set(.1,.1,2);holder.add(m);posts.push(m)}

@@ -235,3 +235,28 @@ On the GPU side, these structural changes do not show up in the counts:
 - grass collapses beyond 70 m
 
 None of this was measured on a physical phone. All numbers come from a desktop GPU running headless Chrome through ANGLE Metal, with the same harness for baseline and final. Real-device frame rate and feel still need checking on an iPhone.
+
+## Graphics upgrade 2: video pass for CHASE and FPV
+
+Plan: [graphics-upgrade-2-plan.md](graphics-upgrade-2-plan.md).
+
+New modules:
+- `feed-post.mjs`: the single video pass (glow, sun flare, depth of field, motion blur, grading, signal breakup)
+- `exposure.mjs`: exposure adaptation in a 1×1 pass
+- `signal-model.mjs`: link quality from range and line-of-sight obstruction
+- `camera-motion.mjs`: camera shake, chase FOV and bank follow
+- `airframe-effects.mjs`: rotor dust and contact shade
+
+Look changes:
+- **Analog feed in both views.** CHASE now runs the FPV analog chain at about 60% strength, as a second analog camera. FPV keeps its approved constants and adds rolling-shutter skew.
+- **Signal breakup.** Range, hills and hangar walls between the pilot and the aircraft degrade the picture. Mild loss only adds grain.
+- **Exposure and glow.** Exposure adapts through the 1×1 pass. Emissive surfaces mark themselves in feed alpha (sun, water glints, hangar lights, gate flash, LED underglow), and a sun glare and flare are drawn with depth occlusion.
+- **Depth and motion.** CHASE softens distant scenery with depth of field. Motion blur is depth-aware. CHASE FOV widens with speed (72→82°), and both views get subtle shake.
+- **FPV ducts.** The FPV view now shows the front ducts and the spinning-prop blur at the bottom edge, using a 6 mm near plane in reversed-depth mode only.
+- **Ground effects.** Rotor dust over land below 1.2 m, a contact shade under low hovers, and tapered grass blades.
+- **Shadow fix.** The shadow light frame is kept within 30 m of the ground. Without this, reversed depth darkened ground beyond the light's far plane at altitude.
+
+Measurements (headless Chrome, 1280×720, against `83eacee`):
+- Scene draw calls rose by 2–3 at each pose; the new parts are the FPV ducts and props, the LED and the dust.
+- Live 60 Hz flight stays at cost 1.00 on the `high` level, P95 16.7 ms in both views.
+- No physical-device measurement.

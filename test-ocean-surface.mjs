@@ -14,7 +14,7 @@ assert(Math.abs(at(-3900,-3900)-6.6)<.05);
 const material=createOceanMaterial({coast,waveCount:10}),fragment=material.fragmentShader;
 assert.equal(material.uniforms.waveCount.value,10);assert(fragment.includes('if(i>=waveCount)break;float fade=clamp(1.8-k*foot*1.6,0.,1.);if(fade<=0.)break;'));
 assert(fragment.includes('atmosphereFactor(')&&fragment.includes('float atmosphereDensity('));assert(!material.vertexShader.includes('sin('),'flat surface; waves are normals only');
-assert(fragment.trim().endsWith('gl_FragColor=sRGBTransferEOTF(vec4(clamp(color,0.,1.),1.));}'));
+assert(/gl_FragColor=sRGBTransferEOTF\(vec4\(clamp\(color,0\.,1\.\),1\.-clamp\(glint\*\.35,0\.,\.85\)\*\(1\.-atmosphereFactor\([^;]+\)\)\)\);}$/.test(fragment.trim()),'decode once at the end; alpha is the fog-faded glint glow mask');
 // Numeric model of the cut-off: farther / grazing pixels evaluate fewer bands.
 const bands=foot=>{let k=.32,n=0;for(let i=0;i<OCEAN.waves;i++){if(1.8-k*foot*1.6<=0)break;n++;k*=1.18}return n};
 assert.equal(bands(0),OCEAN.waves);assert(bands(.5)<bands(.1)&&bands(3)<=3,'distant water costs only a few bands');

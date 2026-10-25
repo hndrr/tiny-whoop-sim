@@ -33,20 +33,22 @@ assert(main.includes('const target=createFlightRenderTarget({hdr:colorManaged,fl
 const deep=createFlightRenderTarget({floatDepth:true});
 assert.equal(deep.depthTexture.type,T.FloatType);assert.equal(deep.texture.type,T.UnsignedByteType);assert.equal(deep.texture.colorSpace,T.SRGBColorSpace);
 assert.equal(sdr.depthTexture,null,'logarithmic fallback keeps the default renderbuffer');deep.dispose();
-assert(main.includes('gl_FragColor=sRGBTransferEOTF(vec4(clamp(col,0.,1.),1.));}`});const skyDome'));
+// Alpha now carries the sun's glow mask for the video pass; colour decoding is unchanged.
+assert(main.includes('gl_FragColor=sRGBTransferEOTF(vec4(clamp(col,0.,1.),1.-glow));}`});const skyDome'));
 // The sea shader moved to ocean-surface.mjs; it still authors display colours and
 // decodes once at the very end, exactly like the sky dome.
 const oceanSource=readFileSync(new URL('./dist/ocean-surface.mjs',import.meta.url),'utf8');
-assert(oceanSource.includes('gl_FragColor=sRGBTransferEOTF(vec4(clamp(color,0.,1.),1.));}`'));
+assert(oceanSource.includes('gl_FragColor=sRGBTransferEOTF(vec4(clamp(color,0.,1.),1.-clamp(glint*.35,0.,.85)'),'glint glow mask rides in alpha; colour decode unchanged');
 assert(main.includes('const ocean=mesh(new T.PlaneGeometry(80000,80000,1,1),oceanMat,[0,0,-2.4]);'));
-assert.equal((main.match(/#include <colorspace_fragment>/g)||[]).length,1);
-assert(main.indexOf('#include <colorspace_fragment>')<main.indexOf('float noise='));
+const feedSource=readFileSync(new URL('./dist/feed-post.mjs',import.meta.url),'utf8');
+assert.equal((feedSource.match(/#include <colorspace_fragment>/g)||[]).length,1);
+assert(feedSource.indexOf('#include <colorspace_fragment>')<feedSource.indexOf('float noise='));
 assert(T.ShaderChunk.colorspace_pars_fragment.includes('vec4 sRGBTransferEOTF'));
 const vendor=readFileSync(new URL('./dist/vendor/three.module.min.js',import.meta.url),'utf8');
 assert(vendor.includes('e.SRGB8_ALPHA8:e.RGBA8'),'pinned renderer distinguishes byte storage transfer formats');
 assert(vendor.includes('LinearSRGBColorSpace as F')&&vendor.includes('outputColorSpace:null===O?e.outputColorSpace:!0===O.isXRRenderTarget?O.texture.colorSpace:F'),'ordinary offscreen programs remain linear');
 assert(vendor.includes('Pn.colorspace_pars_fragment,Ti("linearToOutputTexel",n.outputColorSpace)'),'ShaderMaterial receives the pinned transfer helpers');
-const post=main.slice(main.indexOf('const postMat='),main.indexOf('bindBrightness(document'));assert(!post.includes('sRGBTransferEOTF'),'feed samples are hardware decoded, never decoded twice manually');
+const post=readFileSync(new URL('./dist/feed-post.mjs',import.meta.url),'utf8');assert(!post.includes('sRGBTransferEOTF'),'feed samples are hardware decoded, never decoded twice manually');
 sdr.dispose();hdr.dispose();
 console.log('PASS: sRGB8 default target/HalfFloat opt-in, unchanged SDR byte budget, dark ramp precision and legacy sky/ocean decode round-trip',JSON.stringify({oldDistinctShadowCodes:oldValues.size,newDistinctShadowCodes:newValues.size,oldMeanCodeError:oldError/64*255,newMeanCodeError:newError/64*255}));
 console.log('CPU storage/transfer model and pinned-source checks only; GPU rendering, real sky appearance and mobile performance remain unverified');

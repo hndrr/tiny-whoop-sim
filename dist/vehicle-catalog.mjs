@@ -1,5 +1,6 @@
 import * as T from './vendor/three.module.min.js';
 import {createStaticBatcher} from './static-batch.mjs';
+import {markGlow} from './feed-post.mjs';
 // Shared aircraft catalog for the inspector and the in-flight airframes.
 export const VEHICLES=Object.freeze([
  {id:'whoop75',name:'WHOOP 75',tag:'CLASSIC DUCTED',description:'Four open ducts, a coral canopy and three-blade props.',color:'#ed5a48',span:.027,radius:.022,blades:3,guards:true,camera:[0,.029,.031]},
@@ -97,6 +98,9 @@ function propBlurAlpha(){
 // Armed props show a translucent blur disc instead of individual blades.
 export function bakeVehicle(model){
  const {group,propellers,preset}=model,batcher=createStaticBatcher({contact:false,cell:Infinity});
+ // Ducts stay a separate batch: the FPV camera sees them (and the props) at
+ // the bottom of the picture, as on a real whoop.
+ for(const part of group.children)if(part.name==='duct')part.userData.batchTag='fpv';
  batcher.batch(group);
  const blurMaterial=new T.MeshLambertMaterial({color:preset.color,alphaMap:propBlurAlpha(),transparent:true,depthWrite:false,side:T.DoubleSide});
  const blurGeometry=new T.CircleGeometry(preset.radius*.91,24);
@@ -106,5 +110,11 @@ export function bakeVehicle(model){
   prop.userData.blur=amount=>{for(const child of prop.children)child.visible=child===blur?amount>.5:amount<=.5};
  }
  group.traverse(o=>{if(o.isMesh&&o.name!=='prop-blur')o.castShadow=o.receiveShadow=true});
+ // Underglow strip in the frame colour; it blooms through the video pass glow.
+ const body=new T.Box3();for(const part of group.children)if(part.isMesh&&part.userData.batchTag!=='fpv')body.expandByObject(part,true);
+ const led=new T.Mesh(new T.BoxGeometry(preset.span*.62,preset.span*.95,.0016),markGlow(new T.MeshBasicMaterial({color:preset.color}),1));
+ led.name='underglow';led.position.set(0,-.002,body.min.z+.001);led.castShadow=led.receiveShadow=false;group.add(led);
+ group.userData.fpvParts=group.children.some(c=>c.userData.batchTag==='fpv')||propellers.length>0;
+ group.userData.setView=fpv=>{for(const part of group.children)part.visible=!fpv||part.userData.batchTag==='fpv'||propellers.includes(part)};
  return model;
 }
