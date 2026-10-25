@@ -56,11 +56,12 @@ for(const fpv of [true,false]){
  assert(Math.abs(u.sun.value.x-.5)<1e-3&&Math.abs(u.sun.value.y-.5)<1e-3&&u.sun.value.z>0,'sun at the centre when looking at it');assert.equal(u.blurTaps.value,0,'no blur at rest');assert.equal(u.dofStrength.value,1);
  state.vy=40;post.update(1/60,{camera,state,fpv:true,drone,level:QUALITY_LEVELS[0]});assert.equal(u.blurTaps.value,6);assert.equal(u.dofStrength.value,0,'FPV keeps everything in focus');
  assert.equal(u.jello.value.y,0,'no per-frame scanline wobble on the FPV lens');post.update(1/60,{camera,state,fpv:false,drone,motion:{yawRate:0,pitchRate:0,shake:.01},level:QUALITY_LEVELS[0]});assert(u.jello.value.y>0,'chase camera keeps its soft-mount wobble');
- post.update(1/60,{camera,state,fpv:true,drone,level:QUALITY_LEVELS.at(-1)});assert.equal(u.blurTaps.value,0,'low quality drops motion blur');
+ post.update(1/60,{camera,state,fpv:true,drone,level:QUALITY_LEVELS.at(-1)});assert.equal(u.blurTaps.value,0,'low quality drops motion blur');assert.equal(u.shaftTaps.value,0,'low quality drops light shafts');post.update(1/60,{camera,state,fpv:true,drone,level:QUALITY_LEVELS[0]});assert.equal(u.shaftTaps.value,QUALITY_LEVELS[0].shafts);assert(post.material.fragmentShader.indexOf('// Light shafts')<post.material.fragmentShader.indexOf('col*=texture2D(exposureMap'),'shafts are scene-linear, before exposure');
+ 
  post.update(1/60,{camera,state,fpv:true,drone,reducedMotion:true,level:QUALITY_LEVELS[0]});assert.equal(u.blurTaps.value,0);assert.deepEqual(u.jello.value.toArray(),[0,0]);}
 // Glow marks compose with existing hooks and alter only feed alpha.
 {const m=markGlow(new T.MeshBasicMaterial(),.7),shader={fragmentShader:T.ShaderLib.basic.fragmentShader,vertexShader:''};m.onBeforeCompile(shader,null);assert(shader.fragmentShader.includes('#include <opaque_fragment>\ngl_FragColor.a=0.300;'));assert(m.customProgramCacheKey().endsWith('|glow0.7'))}
-for(let i=1;i<QUALITY_LEVELS.length;i++)for(const key of ['bloom','flare','dof','motionTaps','grass'])assert(QUALITY_LEVELS[i][key]<=QUALITY_LEVELS[i-1][key],`${key} never rises as quality drops`);
+for(let i=1;i<QUALITY_LEVELS.length;i++)for(const key of ['bloom','flare','dof','motionTaps','grass','shafts'])assert(QUALITY_LEVELS[i][key]<=QUALITY_LEVELS[i-1][key],`${key} never rises as quality drops`);
 assert(main.indexOf('cameraLife(dt);')<main.indexOf('renderer.render(scene,camera)'));assert(main.indexOf('renderer.render(scene,camera)')<main.indexOf('videoFx(dt);renderer.setRenderTarget(null)'));
 assert(main.includes("drone.visible=!fpv||drone.userData.fpvParts===true&&reversedDepth;drone.userData.setView?.(fpv);"));
 console.log('PASS: partial clamped exposure, range/terrain/hangar link loss with release, rotation-only camera life with bounded chase FOV, land-only rotor dust and contact shade, sun/blur/focus optics and quality gating, composable glow marks, frame ordering');

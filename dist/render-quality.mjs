@@ -4,10 +4,10 @@
 // The level moves one step at a time with hysteresis and a minimum dwell, the
 // analogue of smoothing tall-cell heights so the grid never jumps.
 export const QUALITY_LEVELS=Object.freeze([
- Object.freeze({name:'high',chaseScale:1,msaa:4,waves:16,shadowMap:2048,bloom:1,flare:1,dof:1,motionTaps:6,grass:1}),
- Object.freeze({name:'balanced',chaseScale:.85,msaa:0,waves:12,shadowMap:2048,bloom:1,flare:1,dof:1,motionTaps:4,grass:.75}),
- Object.freeze({name:'medium',chaseScale:.72,msaa:0,waves:10,shadowMap:1024,bloom:.8,flare:1,dof:0,motionTaps:3,grass:.5}),
- Object.freeze({name:'low',chaseScale:.6,msaa:0,waves:6,shadowMap:1024,bloom:.5,flare:.6,dof:0,motionTaps:0,grass:.3})
+ Object.freeze({name:'high',chaseScale:1,msaa:4,waves:16,shadowMap:2048,bloom:1,flare:1,dof:1,motionTaps:6,grass:1,shafts:12}),
+ Object.freeze({name:'balanced',chaseScale:.85,msaa:0,waves:12,shadowMap:2048,bloom:1,flare:1,dof:1,motionTaps:4,grass:.75,shafts:8}),
+ Object.freeze({name:'medium',chaseScale:.72,msaa:0,waves:10,shadowMap:1024,bloom:.8,flare:1,dof:0,motionTaps:3,grass:.5,shafts:6}),
+ Object.freeze({name:'low',chaseScale:.6,msaa:0,waves:6,shadowMap:1024,bloom:.5,flare:.6,dof:0,motionTaps:0,grass:.3,shafts:0})
 ]);
 export const QUALITY=Object.freeze({down:1.2,up:1.05,downAfter:1.5,upAfter:5,dwell:3,stall:250,smoothing:.1,refreshSamples:120,refreshRates:[30,60,75,90,120,144,165,240]});
 export function levelIndex(name){return QUALITY_LEVELS.findIndex(level=>level.name===name)}

@@ -1,5 +1,5 @@
 import * as T from './vendor/three.module.min.js';
-import {ATMOSPHERE,ATMOSPHERE_GLSL} from './atmosphere.mjs';
+import {ATMOSPHERE,ATMOSPHERE_GLSL,CLOUD_GLSL} from './atmosphere.mjs';
 import {terrainHeight,WORLD_SIZE,WORLD_HALF,SEA_LEVEL,isOverWater,surfaceClearance} from './world.mjs';
 // Sea surface after the Open Water study: a sum of dispersive exp-sine swells
 // whose bands are dropped once a pixel's footprint cannot resolve them, so the
@@ -35,7 +35,7 @@ void main(){vec4 world=modelMatrix*vec4(position,1.);vWorld=world.xyz;vec4 view=
   fragmentShader:`#include <logdepthbuf_pars_fragment>
 varying vec3 vWorld;varying float vViewDepth;
 uniform float clock;uniform int waveCount;uniform float pixelAngle;uniform sampler2D coast;uniform sampler2D ripple;uniform vec4 rippleFrame;uniform vec3 sunDir;
-${ATMOSPHERE_GLSL}
+${ATMOSPHERE_GLSL}${CLOUD_GLSL}
 float oceanHash(float n){return fract(sin(n*12.9898)*43758.5453);}
 float oceanNoise(vec2 p){vec2 i=floor(p),u=fract(p);u=u*u*(3.-2.*u);float a=oceanHash(i.x+i.y*57.),b=oceanHash(i.x+1.+i.y*57.),c=oceanHash(i.x+(i.y+1.)*57.),d=oceanHash(i.x+1.+(i.y+1.)*57.);return mix(mix(a,b,u.x),mix(c,d,u.x),u.y);}
 // Rounded troughs and slightly pinched crests; each band fades once
@@ -66,7 +66,7 @@ vec3 n=normalize(vec3(-slope,1.)),r=reflect(-V,n);r.z=abs(r.z);
 float fresnel=.02+.98*pow(1.-max(dot(n,V),0.),5.),crest=clamp(height/.5,0.,1.);
 vec3 body=mix(vec3(.17,.43,.41),vec3(.035,.2,.24),smoothstep(.4,5.5,depth))*(.82+.36*crest);
 vec3 color=mix(body,skyReflection(r),clamp(fresnel*.92+.04,0.,1.));
-float sun=max(dot(r,sunDir),0.),soft=smoothstep(.05,3.,foot),glint=pow(sun,mix(900.,90.,soft))*mix(5.,1.2,soft);color+=vec3(1.,.86,.62)*(glint+pow(sun,40.)*.06);
+float shade=cloudShadow(vWorld,clock);color*=1.-shade*.45;float sun=max(dot(r,sunDir),0.),soft=smoothstep(.05,3.,foot),glint=pow(sun,mix(900.,90.,soft))*mix(5.,1.2,soft)*(1.-shade*2.4);color+=vec3(1.,.86,.62)*(glint+pow(sun,40.)*.06);
 float surf=(1.-smoothstep(.05,1.4,depth))*(.55+.45*sin(clock*1.3-depth*5.+oceanNoise(vWorld.xy*.15)*4.));color=mix(color,vec3(.9,.93,.92),smoothstep(.45,.9,surf*(.6+.6*oceanNoise(vWorld.xy*.9+clock*.2)))*.75);
 color=mix(color,mix(${SKY_HAZE},${SUN_HAZE},pow(max(dot(-V,sunDir),0.),8.)*.55),atmosphereFactor(${ATMOSPHERE.density.toFixed(6)},vViewDepth,cameraPosition.z,vWorld.z));
 // Sun glints mark themselves in feed alpha for the video pass glow.

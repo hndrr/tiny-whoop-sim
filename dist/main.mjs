@@ -6,7 +6,7 @@ import {chooseDepthMode,rendererDepthOptions} from './render-depth.mjs';
 import {createShadowScheduler} from './shadow-scheduler.mjs';
 import {createStaticBatcher,instanceMeshes} from './static-batch.mjs';
 import {createRockField,applyWind} from './nature-visuals.mjs';
-import {ATMOSPHERE,installAtmosphere} from './atmosphere.mjs';
+import {ATMOSPHERE,CLOUDS,CLOUD_GLSL,installAtmosphere} from './atmosphere.mjs';
 import {OCEAN,coastDepthTexture,createOceanMaterial,createOceanSurface} from './ocean-surface.mjs';
 import {createQualityController} from './render-quality.mjs';
 import {createFeedPost,markGlow} from './feed-post.mjs';
@@ -64,14 +64,19 @@ applyTerrainShading(terrainMat,{detailMean:noiseMapMean()});
 // levels in one batched multi-draw; each patch picks its level by pixel error.
 const terrain=createTerrain(terrainMat);scene.add(terrain.mesh);const terrainChunks=terrain.chunks;
 const skyGeo=new T.SphereGeometry(18000,40,20);const skyMat=new T.ShaderMaterial({side:T.BackSide,depthWrite:false,uniforms:{sunDir:{value:new T.Vector3(...ATMOSPHERE.sunDirection)},clock:{value:0}},vertexShader:`#include <common>\n#include <logdepthbuf_pars_vertex>\nvarying vec3 v;void main(){v=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);\n#include <logdepthbuf_vertex>\n}`,fragmentShader:`#include <logdepthbuf_pars_fragment>\nvarying vec3 v;uniform vec3 sunDir;uniform float clock;
-float skyHash(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
-float skyNoise(vec2 p){vec2 i=floor(p),u=fract(p);u=u*u*(3.-2.*u);return mix(mix(skyHash(i),skyHash(i+vec2(1.,0.)),u.x),mix(skyHash(i+vec2(0.,1.)),skyHash(i+vec2(1.,1.)),u.x),u.y);}
+${CLOUD_GLSL}
 void main(){
 #include <logdepthbuf_fragment>
 vec3 d=normalize(v);float h=max(0.,d.z);vec3 col=mix(vec3(.74,.79,.78),vec3(.17,.38,.59),pow(h,.5));float sd=max(dot(d,sunDir),0.);col+=vec3(1.,.75,.40)*pow(sd,18.)*.21;col+=vec3(1.,.91,.69)*smoothstep(.99955,.99975,sd)*2.;
 // Drifting cumulus on a plane overhead: three octaves, brighter cores and sun
 // side, thinning toward the horizon where they would alias.
-if(d.z>.012){vec2 cp=d.xy/(d.z+.12)*.55+vec2(clock*.004,clock*.0015);float n=skyNoise(cp*1.3)*.55+skyNoise(cp*2.9+3.1)*.3+skyNoise(cp*6.3-1.7)*.15;float cover=smoothstep(.5,.76,n)*smoothstep(.012,.16,d.z);vec3 cloud=mix(vec3(.79,.82,.84),vec3(.97,.96,.92),clamp(smoothstep(.55,.9,n)+pow(sd,6.)*.45,0.,1.));col=mix(col,cloud,cover*.86);}
+if(d.z>.012){vec2 cp=d.xy/(d.z+.12)*${CLOUDS.scale.toFixed(2)}+cloudPlane(cameraPosition.xy,clock);float n=cloudDensity(cp);float cover=smoothstep(${CLOUDS.cover[0].toFixed(2)},${CLOUDS.cover[1].toFixed(2)},n)*smoothstep(.012,.16,d.z);
+ // Thick cores sit darker underneath, thin sun-side edges catch a silver lining.
+ float thick=smoothstep(.6,.95,n),rim=cover*(1.-smoothstep(.56,.7,n));
+ vec3 cloud=mix(vec3(.97,.96,.92),vec3(.62,.67,.73),thick*.55)+vec3(1.,.93,.78)*(pow(sd,5.)*.5+pow(sd,24.)*.6)*(1.-thick*.6)+vec3(1.,.95,.84)*rim*pow(sd,3.)*.55;
+ // A thin, streaky cirrus deck high above the cumulus.
+ vec2 hp=d.xy/(d.z+.05)*.22+cloudPlane(cameraPosition.xy,clock)*.4;float cirrus=smoothstep(.55,.88,cloudNoise(vec2(hp.x*2.6,hp.y*.7)*2.2+cloudNoise(hp*5.)*.6))*smoothstep(.03,.3,d.z)*.28;
+ col=mix(col,vec3(.95,.96,.97)+vec3(1.,.9,.7)*pow(sd,6.)*.3,cirrus);col=mix(col,clamp(cloud,0.,1.),cover*.88);}
 // The horizon dissolves into the same haze as distant scenery and sea.
 vec3 haze=mix(vec3(.7216,.7804,.7922),vec3(.854,.815,.735),pow(sd,8.)*.55);col=mix(haze,col,smoothstep(-.01,.14,d.z));
 // The sun marks itself in feed alpha for the video pass glow.
@@ -81,7 +86,7 @@ float glow=clamp(smoothstep(.9994,.99975,sd)+pow(sd,90.)*.35,0.,1.)*.9;gl_FragCo
 const oceanMat=createOceanMaterial({coast:coastDepthTexture(),waveCount:coarsePointer?OCEAN.coarseWaves:OCEAN.waves});const ocean=mesh(new T.PlaneGeometry(80000,80000,1,1),oceanMat,[0,0,-2.4]);ocean.renderOrder=1;ocean.castShadow=false;
 const airfieldStart=scene.children.length;
 // Sky clouds drift on the same clock as the sea and foliage.
-skyMat.uniforms.clock=oceanMat.uniforms.clock;const oceanSurface=createOceanSurface(renderer,oceanMat);
+skyMat.uniforms.clock=oceanMat.uniforms.clock;terrainMat.userData.cloudClock=oceanMat.uniforms.clock;const oceanSurface=createOceanSurface(renderer,oceanMat);
 // Preserve the original seeded scenery sequence without allocating the old noise map.
 for(let i=0;i<256*256;i++)rand();
 const asphalt=surfaces.asphalt;box([5,25,.025],[23,125,.05],asphalt);const white=mat('#c8c7b5'),yellow=mat('#c7a24e');for(let y=-28;y<85;y+=12)box([5,y,.058],[.2,5,.01],white);for(const x of [-5.5,15.5])box([x,25,.06],[.12,120,.01],white);for(const y of [-29,79])for(let x=-3;x<15;x+=3)box([x,y,.061],[1,6,.015],white);box([32,25,.02],[31,75,.04],asphalt);

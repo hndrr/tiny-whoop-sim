@@ -54,3 +54,16 @@ export function installAtmosphere(chunks=T.ShaderChunk){
  return chunks;
 }
 export const ATMOSPHERE_CHUNKS=Object.freeze({fog_pars_vertex:FOG_PARS_VERTEX,fog_vertex:FOG_VERTEX,fog_pars_fragment:FOG_PARS_FRAGMENT,fog_fragment:FOG_FRAGMENT});
+// One cloud layer for sky, terrain and sea. The sky samples it along the view
+// ray (offset by the camera, so clouds stay put in the world as you fly) and
+// the ground follows the sun up to the same layer for drifting cloud shadows.
+export const CLOUDS=Object.freeze({height:1500,scale:.55,drift:[.004,.0015],cover:[.5,.76],shadow:.34});
+export const CLOUD_GLSL=`
+float cloudHash(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+float cloudNoise(vec2 p){vec2 i=floor(p),u=fract(p);u=u*u*(3.-2.*u);return mix(mix(cloudHash(i),cloudHash(i+vec2(1.,0.)),u.x),mix(cloudHash(i+vec2(0.,1.)),cloudHash(i+vec2(1.,1.)),u.x),u.y);}
+float cloudDensity(vec2 cp){return cloudNoise(cp*1.3)*.55+cloudNoise(cp*2.9+3.1)*.3+cloudNoise(cp*6.3-1.7)*.15;}
+vec2 cloudPlane(vec2 world,float clock){return world*${(CLOUDS.scale/CLOUDS.height).toFixed(7)}+vec2(clock*${CLOUDS.drift[0].toFixed(4)},clock*${CLOUDS.drift[1].toFixed(4)});}
+float cloudShadow(vec3 p,float clock){
+ vec2 xy=p.xy+${v3(ATMOSPHERE.sunDirection)}.xy/${ATMOSPHERE.sunDirection[2].toFixed(5)}*max(${CLOUDS.height.toFixed(1)}-p.z,0.);
+ return smoothstep(${CLOUDS.cover[0].toFixed(2)},${CLOUDS.cover[1].toFixed(2)},cloudDensity(cloudPlane(xy,clock)))*${CLOUDS.shadow.toFixed(2)};
+}`;

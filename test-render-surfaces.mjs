@@ -8,7 +8,7 @@ import {createTerrainGeometry} from './dist/terrain-visuals.mjs';
 import {surfaceBoxGeometry} from './dist/surface-materials.mjs';
 import {groundSlabPlacement,coveredSupportPlacement,groundSurfaceGeometry,SURFACE_LAYERS} from './dist/render-surfaces.mjs';
 import {chooseDepthMode,rendererDepthOptions,attachFloatDepth} from './dist/render-depth.mjs';
-import {ATMOSPHERE} from './dist/atmosphere.mjs';
+import {ATMOSPHERE,CLOUDS,CLOUD_GLSL} from './dist/atmosphere.mjs';
 import {OCEAN,coastDepthTexture,createOceanMaterial} from './dist/ocean-surface.mjs';
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8'),selector=readFileSync(new URL('./dist/flight-selector.mjs',import.meta.url),'utf8');
 const snapshot=JSON.stringify({SOLIDS,WORLD_OBJECTS});
@@ -75,7 +75,7 @@ assert(main.includes('for(const o of SOLIDS)box(o.position,o.size,stageMats[o.ma
 assert(main.includes('const view=coveredSupportPlacement(o);m=box(view.position,view.size,stageMats[o.material]||yellow,regionGroups[o.region],true)'));
 // Real custom ShaderMaterial construction, with no GPU. Include expansion checks
 // catch missing chunks/helpers; they do not claim driver shader compilation.
-const sky=runInNewContext(between(main,'const skyGeo=','const oceanMat=')+';({skyMat})',{T,scene,ATMOSPHERE}).skyMat;
+const sky=runInNewContext(between(main,'const skyGeo=','const oceanMat=')+';({skyMat})',{T,scene,ATMOSPHERE,CLOUDS,CLOUD_GLSL}).skyMat;
 const ocean=runInNewContext(between(main,'const oceanMat=','const airfieldStart=')+';({oceanMat})',{T,mesh(){return {}},OCEAN,coastDepthTexture,createOceanMaterial,coarsePointer:false}).oceanMat;
 const backdrop=runInNewContext(between(selector,'function createBackdrop(){','function releaseCapture()')+';createBackdrop()',{T});
 const contact=backdrop.children[1].material;

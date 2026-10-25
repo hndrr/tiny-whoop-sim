@@ -1,6 +1,6 @@
 import * as T from './vendor/three.module.min.js';
 import {WORLD_HALF,terrainHeight} from './world.mjs';
-import {ATMOSPHERE} from './atmosphere.mjs';
+import {ATMOSPHERE,CLOUD_GLSL} from './atmosphere.mjs';
 const SUN=ATMOSPHERE.sunDirection;
 
 const clamp01=value=>Math.max(0,Math.min(1,value));
@@ -79,8 +79,10 @@ vec4 terrainWorld=vec4(transformed,1.);
 terrainWorld=batchingMatrix*terrainWorld;
 #endif
 vTerrainWorld=(modelMatrix*terrainWorld).xyz;`);
+  if(shader.uniforms)shader.uniforms.cloudClock=material.userData.cloudClock??{value:0};
   shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
 varying vec3 vTerrainWorld;
+uniform float cloudClock;${CLOUD_GLSL}
 float terrainHash(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
 float terrainNoise(vec2 p){vec2 i=floor(p),u=fract(p);u=u*u*(3.-2.*u);return mix(mix(terrainHash(i),terrainHash(i+vec2(1.,0.)),u.x),mix(terrainHash(i+vec2(0.,1.)),terrainHash(i+vec2(1.,1.)),u.x),u.y);}`).replace('#include <map_fragment>',`#ifdef USE_MAP
 float terrainNear=1.-smoothstep(${f(c.detailNear)},${f(c.detailFar)},distance(vTerrainWorld,cameraPosition));
@@ -115,7 +117,8 @@ diffuseColor.rgb*=mix(vec3(${f(detailMean)}),texture2D(map,vMapUv).rgb,terrainNe
   vec2 cell=floor(w*2.5);float speck=step(.982,terrainHash(cell))*step(length(fract(w*2.5)-.5),.16)*grassy;
   diffuseColor.rgb=mix(diffuseColor.rgb,terrainHash(cell+3.1)>.5?vec3(.86,.8,.36):vec3(.82,.84,.86),speck*.8*patchNear);
  }
-}`);
+}`).replace('#include <lights_fragment_end>',`#include <lights_fragment_end>
+reflectedLight.directDiffuse*=1.-cloudShadow(vTerrainWorld,cloudClock);`);
  };
  material.customProgramCacheKey=()=>'terrain-shading-v2';
  return material;
