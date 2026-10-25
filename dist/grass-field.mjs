@@ -4,7 +4,7 @@ import * as T from './vendor/three.module.min.js';
 // per frame, nearest first. Placement is a pure hash of the cell, so returning
 // to a spot shows the same tufts. One InstancedMesh, one draw; paved areas,
 // building footprints, steep rock, beach and high stone are left bare.
-export const GRASS_FIELD=Object.freeze({cell:16,radius:64,capacity:9000,fillPerFrame:6,shoreTop:-1.2,stoneLine:230,maxSlope:.42,hideAbove:70,
+export const GRASS_FIELD=Object.freeze({cell:16,radius:64,capacity:9000,coarseCapacity:6000,band:16,fillPerFrame:6,shoreTop:-1.2,stoneLine:230,maxSlope:.42,hideAbove:70,
  tints:[[1,1,1],[1.08,1.04,.82],[.86,.96,.82],[1.14,1.06,.74]]});
 // Full avalanche integer hash (each input mixed in turn), so consecutive blade
 // indices do not line up.
@@ -50,33 +50,40 @@ export function tuftGeometry(blade,count=4){
  }
  const g=new T.BufferGeometry();g.setAttribute('position',new T.Float32BufferAttribute(pos,3));g.setAttribute('normal',new T.Float32BufferAttribute(nor,3));if(c)g.setAttribute('color',new T.Float32BufferAttribute(col,3));g.setIndex(idx);g.computeBoundingSphere();return g;
 }
+// Instances are laid out band-major: band b of every slot sits together, so
+// lowering the density only lowers mesh.count and the GPU skips the unused
+// bands entirely. Each band of a cell is one contiguous upload range.
 export function createGrassField({geometry,material,terrainHeight,exclude=()=>false,capacity=GRASS_FIELD.capacity}){
- const c=GRASS_FIELD,slots=maxCells(),perCell=Math.max(1,Math.floor(capacity/slots));
+ const c=GRASS_FIELD,B=c.band,slots=maxCells(),bands=Math.max(1,Math.floor(capacity/slots/B)),perCell=bands*B;
  const mesh=new T.InstancedMesh(geometry,material,slots*perCell);mesh.name='grass-field';mesh.frustumCulled=false;mesh.receiveShadow=true;mesh.castShadow=false;
  const zero=new T.Matrix4().makeScale(0,0,0),dummy=new T.Object3D(),tint=new T.Color();
  for(let n=0;n<mesh.count;n++){mesh.setMatrixAt(n,zero);mesh.setColorAt(n,tint.setRGB(1,1,1))}
- const live=new Map(),free=Array.from({length:slots},(_,n)=>n);let density=1,filled=0;
- const key=(i,j)=>`${i},${j}`;
+ const live=new Map(),free=Array.from({length:slots},(_,n)=>n);let used=bands,filled=0;
+ const key=(i,j)=>`${i},${j}`,index=(slot,band,b)=>(band*slots+slot)*B+b;
  function fill(slot,i,j){
-  const used=Math.round(perCell*density),blades=cellBlades(i,j,used,{terrainHeight,exclude});
-  for(let k=0;k<perCell;k++){
-   const b=k<used?blades[k]:null,n=slot*perCell+k;
-   if(!b){mesh.setMatrixAt(n,zero);continue}
-   dummy.position.set(b[0],b[1],b[2]);dummy.rotation.set(b[4],0,b[3],'ZXY');dummy.scale.setScalar(b[5]);dummy.updateMatrix();mesh.setMatrixAt(n,dummy.matrix);
-   const t=c.tints[b[6]];mesh.setColorAt(n,tint.setRGB(t[0],t[1],t[2]));
+  const blades=cellBlades(i,j,used*B,{terrainHeight,exclude});
+  for(let band=0;band<used;band++){
+   for(let b=0;b<B;b++){
+    const blade=blades[band*B+b],n=index(slot,band,b);
+    if(!blade){mesh.setMatrixAt(n,zero);continue}
+    dummy.position.set(blade[0],blade[1],blade[2]);dummy.rotation.set(blade[4],0,blade[3],'ZXY');dummy.scale.setScalar(blade[5]);dummy.updateMatrix();mesh.setMatrixAt(n,dummy.matrix);
+    const t=c.tints[blade[6]];mesh.setColorAt(n,tint.setRGB(t[0],t[1],t[2]));
+   }
+   mesh.instanceMatrix.addUpdateRange(index(slot,band,0)*16,B*16);mesh.instanceColor.addUpdateRange(index(slot,band,0)*3,B*3);
   }
-  mesh.instanceMatrix.addUpdateRange(slot*perCell*16,perCell*16);mesh.instanceColor.addUpdateRange(slot*perCell*3,perCell*3);filled++;
+  filled++;
  }
- function clear(slot){for(let k=0;k<perCell;k++)mesh.setMatrixAt(slot*perCell+k,zero);mesh.instanceMatrix.addUpdateRange(slot*perCell*16,perCell*16)}
- return {mesh,perCell,slots,get cells(){return live.size},get filled(){return filled},
+ function clear(slot){for(let band=0;band<used;band++){for(let b=0;b<B;b++)mesh.setMatrixAt(index(slot,band,b),zero);mesh.instanceMatrix.addUpdateRange(index(slot,band,0)*16,B*16)}}
+ const drawn=()=>{mesh.count=slots*used*B};
+ return {mesh,perCell,slots,get cells(){return live.size},get filled(){return filled},get drawn(){return mesh.count},
   update(position,{budget=c.fillPerFrame}={}){
-   const high=position.z-terrainHeight(position.x,position.y)>c.hideAbove;mesh.visible=!high;if(high)return;
+   const high=position.z-terrainHeight(position.x,position.y)>c.hideAbove;mesh.visible=!high&&used>0;if(high)return;
    const wanted=cellsInRange(position.x,position.y),keep=new Set(wanted.map(w=>key(w.i,w.j)));let changed=false;
    for(const [k,slot] of live)if(!keep.has(k)){live.delete(k);free.push(slot);clear(slot);changed=true}
    for(const w of wanted){if(budget<=0)break;const k=key(w.i,w.j);if(live.has(k)||!free.length)continue;const slot=free.pop();live.set(k,slot);fill(slot,w.i,w.j);budget--;changed=true}
    if(changed){mesh.instanceMatrix.needsUpdate=true;mesh.instanceColor.needsUpdate=true}
   },
-  // Quality level: fraction of each cell's blades; cells refill progressively.
-  setDensity(value){const next=Math.max(0,Math.min(1,value));if(next===density)return;density=next;for(const [k,slot] of live){free.push(slot);clear(slot)}live.clear();mesh.instanceMatrix.needsUpdate=true},
+  // Quality level: the fraction of bands drawn; cells refill progressively.
+  setDensity(value){const next=Math.round(bands*Math.max(0,Math.min(1,value)));if(next===used)return;for(const [,slot] of live){free.push(slot);clear(slot)}live.clear();used=next;drawn();mesh.instanceMatrix.needsUpdate=true},
   dispose(){mesh.dispose()}};
 }
