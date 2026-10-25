@@ -28,9 +28,17 @@ for(const value of [.035,.17,.22,.25,.38,.53,.59,.66,.69,.74,.78,.79,.89,.9,.91,
  assert(Math.abs(result-expected)<=.51/255);
 }
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
-assert(main.includes('const target=createFlightRenderTarget({hdr:colorManaged})'));
+assert(main.includes('const target=createFlightRenderTarget({hdr:colorManaged,floatDepth:reversedDepth})'));
+// Reversed depth adds a float depth attachment and leaves colour storage alone.
+const deep=createFlightRenderTarget({floatDepth:true});
+assert.equal(deep.depthTexture.type,T.FloatType);assert.equal(deep.texture.type,T.UnsignedByteType);assert.equal(deep.texture.colorSpace,T.SRGBColorSpace);
+assert.equal(sdr.depthTexture,null,'logarithmic fallback keeps the default renderbuffer');deep.dispose();
 assert(main.includes('gl_FragColor=sRGBTransferEOTF(vec4(clamp(col,0.,1.),1.));}`});const skyDome'));
-assert(main.includes('gl_FragColor=sRGBTransferEOTF(vec4(clamp(color,0.,1.),1.));}`});mesh(new T.PlaneGeometry(80000'));
+// The sea shader moved to ocean-surface.mjs; it still authors display colours and
+// decodes once at the very end, exactly like the sky dome.
+const oceanSource=readFileSync(new URL('./dist/ocean-surface.mjs',import.meta.url),'utf8');
+assert(oceanSource.includes('gl_FragColor=sRGBTransferEOTF(vec4(clamp(color,0.,1.),1.));}`'));
+assert(main.includes('const ocean=mesh(new T.PlaneGeometry(80000,80000,1,1),oceanMat,[0,0,-2.4]);'));
 assert.equal((main.match(/#include <colorspace_fragment>/g)||[]).length,1);
 assert(main.indexOf('#include <colorspace_fragment>')<main.indexOf('float noise='));
 assert(T.ShaderChunk.colorspace_pars_fragment.includes('vec4 sRGBTransferEOTF'));

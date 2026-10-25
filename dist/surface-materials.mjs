@@ -1,10 +1,13 @@
 import * as T from './vendor/three.module.min.js';
-import {SIZE,pixels} from './surface-patterns.mjs';
+import {SIZE,pixels,meanLinearAlbedo} from './surface-patterns.mjs';
 export function createSurfaceMaterials(renderer,{coarse=false}={}){
  const textures=[];
- function texture(kind,data){const t=new T.DataTexture(pixels(kind,data),SIZE,SIZE,T.RGBAFormat);t.wrapS=t.wrapT=T.RepeatWrapping;t.colorSpace=data?T.NoColorSpace:T.SRGBColorSpace;t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=Math.min(coarse?2:4,renderer.capabilities.getMaxAnisotropy());t.needsUpdate=true;textures.push(t);return t}
+ function texture(kind,data,size=SIZE){const t=new T.DataTexture(pixels(kind,data,size),size,size,T.RGBAFormat);t.wrapS=t.wrapT=T.RepeatWrapping;t.colorSpace=data?T.NoColorSpace:T.SRGBColorSpace;t.magFilter=T.LinearFilter;t.minFilter=T.LinearMipmapLinearFilter;t.generateMipmaps=true;t.anisotropy=Math.min(coarse?2:4,renderer.capabilities.getMaxAnisotropy());t.needsUpdate=true;textures.push(t);return t}
  function surface(kind,tileMeters,bumpScale){const map=texture(kind,false),detail=texture(kind,true),material=new T.MeshStandardMaterial({color:0xffffff,map,roughnessMap:detail,bumpMap:detail,bumpScale,roughness:1,metalness:0});material.userData.tileMeters=tileMeters;return material}
- return {asphalt:surface('asphalt',4,.025),concrete:surface('concrete',3,.018),textures};
+ // Smaller 128px detail for cargo surfaces: ribs and boards stay several texels
+ // wide at their tile scale. Colour is divided by the map's mean albedo.
+ function detailed(kind,tileMeters,bumpScale,color,roughness,metalness){const map=texture(kind,false,128),detail=texture(kind,true,128),material=new T.MeshStandardMaterial({color,map,roughnessMap:detail,bumpMap:detail,bumpScale,roughness,metalness});material.color.multiplyScalar(1/meanLinearAlbedo(map.image.data));material.userData.tileMeters=tileMeters;return material}
+ return {asphalt:surface('asphalt',4,.025),concrete:surface('concrete',3,.018),container:detailed('corrugated',2,.012,'#6b827b',.75,.15),crate:detailed('planks',1.5,.01,'#8c704b',1,0),textures};
 }
 // Box faces use metre-scaled UVs, avoiding stretched aggregate on long runways.
 export function surfaceBoxGeometry(size,tileMeters){const geo=new T.BoxGeometry(1,1,1),uv=geo.attributes.uv,normals=geo.attributes.normal;for(let i=0;i<uv.count;i++){const nx=Math.abs(normals.getX(i)),ny=Math.abs(normals.getY(i));const width=nx>.5?size[2]:size[0],height=ny>.5?size[2]:size[1];uv.setXY(i,uv.getX(i)*width/tileMeters,uv.getY(i)*height/tileMeters)}return geo}

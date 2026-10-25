@@ -60,8 +60,12 @@ for(const z of [0,1,18,28,75,95,125,140,240,275]){
  assert(Math.max(...low.toArray().map((v,i)=>Math.abs(v-high.toArray()[i])))<1e-5,'no altitude color steps');
 }
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
-assert(main.includes('vertexColors:true,flatShading:true,roughness:1,map:texture(\'grass\')'));
-assert(main.includes('mesh(createTerrainGeometry(cx,cy,segments),terrainMat,[cx,cy,0])'));
+// Terrain is fully rough and non-metal: Lambert keeps its diffuse response and
+// flat face normals without per-pixel GGX work.
+assert(main.includes('new T.MeshLambertMaterial({vertexColors:true,flatShading:true,map:texture(\'grass\')})'));
+// Patches are built by terrain-lod.mjs from the same createTerrainGeometry and
+// drawn through one BatchedMesh with the shared terrain material.
+assert(main.includes('const terrain=createTerrain(terrainMat);scene.add(terrain.mesh);const terrainChunks=terrain.chunks;'));
 assert(T.ShaderChunk.normal_fragment_begin.includes('FLAT_SHADED')&&T.ShaderChunk.normal_fragment_begin.includes('dFdx'),'indexed near meshes use real per-face shader normals');
 assert(main.includes("scene.background=new T.Color('#afc4cf');scene.fog=new T.FogExp2('#b8c7ca',.00019)"));
 assert(main.includes("HemisphereLight('#d7e9ff','#777650',2.1)"));

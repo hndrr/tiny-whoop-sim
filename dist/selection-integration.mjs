@@ -14,7 +14,8 @@ export function withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,a
  try{
   visible(drone,false);visible(airfieldGroup,index===0);
   regionGroups.forEach((g,i)=>visible(g,Math.hypot(REGIONS[i].x-r.x,REGIONS[i].y-r.y)<2400));
-  for(const c of terrainChunks){const near=Math.hypot(c.x-r.x,c.y-r.y)<950;visible(c.near,near);visible(c.far,!near)}
+  // Patches choose their level by projected error at the preview's own size.
+  for(const c of terrainChunks){const near=c.prefersNear?c.prefersNear(camera.position,200,camera.fov):Math.hypot(c.x-r.x,c.y-r.y)<950;visible(c.near,near);visible(c.far,!near)}
   skyDome.position.copy(camera.position);sun.position.set(r.x-80,r.y-95,height+140);sun.target.position.set(r.x,r.y,height);
   return render(camera);
  }finally{for(const [object,value] of saved)object.visible=value;skyDome.position.copy(skyPosition);sun.position.copy(sunPosition);sun.target.position.copy(sunTarget)}
@@ -34,7 +35,12 @@ export function setupFlightSelection({renderer,scene,skyDome,sun,terrainChunks,r
  const brand=document.querySelector('.brand');let brandTitle=brand?.firstChild;
  function refresh(){button.textContent=i18n.t('chooseFlight');const vehicle=getVehicle(selected.vehicle),region=REGIONS.find(r=>r.id===selected.region);summary.textContent=`${vehicle.name} / ${i18n.t(`region.${region.id}`)}`;if(brandTitle?.nodeType===3)brandTitle.textContent=vehicle.name;oldSelect.value=String(REGIONS.indexOf(region));}
  const selector=selectorFactory({renderer,getSelection:()=>selected,getMode,getMissionStage,
-  captureStage:index=>withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,drone:getDrone()},index,camera=>capturePreview(renderer,scene,camera,360,200)),
+  captureStage:index=>{
+   // Shadow maps update on demand: render the preview's own light frame, then
+   // make the next flight frame restore the live one.
+   const refreshShadows=()=>{if(renderer.shadowMap)renderer.shadowMap.needsUpdate=true};
+   try{return withStagePreview({scene,skyDome,sun,terrainChunks,regionGroups,airfieldGroup,drone:getDrone()},index,camera=>{refreshShadows();return capturePreview(renderer,scene,camera,360,200)})}finally{refreshShadows()}
+  },
   onOpen(){previousPaused=state.paused;applied=false;state.paused=true;clearInputs();closeHelp();document.getElementById('help').setAttribute('aria-expanded','true');updateHUD()},
   onApply(next,{areaChanged,vehicleChanged,mode='free',stageIndex=0}){applied=true;if(vehicleChanged){setVehicle(next.vehicle);state.setAircraft(next.vehicle);}if(areaChanged){onAreaChange();state.relocate(REGIONS.findIndex(r=>r.id===next.region));}selected=next;onStart(mode,stageIndex);state.paused=false;clearInputs();refresh();updateHUD()},
   onClose(){document.getElementById('help').setAttribute('aria-expanded','false');if(!applied)state.paused=previousPaused||document.hidden;clearInputs();updateHUD()}

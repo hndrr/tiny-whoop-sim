@@ -144,7 +144,7 @@ const between=(start,end)=>{const from=main.indexOf(start),to=main.indexOf(end,f
   document:{body:{classList:{toggle(){}}}},resize(){},keys:new Set(),axes:{},clearSticks(){},updateHUD(){},
   precision:{mission},flightSelection:{reset(){state.reset()}},skyDome:new T.Group(),airfieldGroup:new T.Group(),terrainChunks:[],regionGroups:[],turbines:[],sun:new T.DirectionalLight(),
   propellers:[],vehiclePreset:VEHICLES[0],aim:new T.Vector3(),local:new T.Vector3(),up:new T.Vector3(),forward:new T.Vector3(),
-  forest:{update(){}},segmentHitsSolid:()=>false,oceanMat:{uniforms:{clock:{value:0}}},postMat:{uniforms:{clock:{value:0},fpv:{value:0}}},
+  forest:{update(){}},shadowSchedule:{update(){}},terrain:{update(){}},renderQuality:{sample(){}},oceanSurface:{update(){}},surfaceClearance:()=>1,segmentHitsSolid:()=>false,oceanMat:{uniforms:{clock:{value:0}}},postMat:{uniforms:{clock:{value:0},fpv:{value:0}}},
   renderer:{setRenderTarget(){},render(){}},target:{},scene:{},postScene:{},postCam:{},renderProfile:null,requestAnimationFrame(){},
  };
  const controller=runInNewContext(between('function reset(){','document.body.classList.add(\'fpv\')')+between('function frame(now){','// Inspectable')+';({frame,reset,switchCamera})',context);

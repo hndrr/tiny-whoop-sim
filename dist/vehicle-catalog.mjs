@@ -1,4 +1,5 @@
 import * as T from './vendor/three.module.min.js';
+import {createStaticBatcher} from './static-batch.mjs';
 // Shared aircraft catalog for the inspector and the in-flight airframes.
 export const VEHICLES=Object.freeze([
  {id:'whoop75',name:'WHOOP 75',tag:'CLASSIC DUCTED',description:'Four open ducts, a coral canopy and three-blade props.',color:'#ed5a48',span:.027,radius:.022,blades:3,guards:true,camera:[0,.029,.031]},
@@ -8,11 +9,22 @@ export const VEHICLES=Object.freeze([
  {id:'cine95',name:'CINE 95',tag:'DUCTED CAMERA PLATFORM',description:'A broad smooth canopy, deep ducts, a protected camera and twin landing skids.',color:'#8ccfe0',span:.035,radius:.026,blades:3,guards:true,camera:[0,.051,.039]}
 ]);
 export const getVehicle=id=>VEHICLES.find(v=>v.id===id)||VEHICLES[0];
-export function createVehicle(id){
+// Ducts are one lathe each: a thin wall with rounded bead lips at both ends,
+// on the same radius and z span as the former cylinder plus two torus rims.
+export function ductGeometry(radius,height,lip){
+ const points=[],arc=(cz,from,to)=>{for(let i=0;i<=6;i++){const a=from+(to-from)*i/6;points.push(new T.Vector2(radius+Math.cos(a)*lip,cz+Math.sin(a)*lip))}};
+ const bottom=-height/2,top=height/2;
+ arc(bottom,Math.PI,Math.PI*2);points.push(new T.Vector2(radius+lip*.55,bottom+lip),new T.Vector2(radius+lip*.55,top-lip));arc(top,0,Math.PI);
+ points.push(new T.Vector2(radius,top-lip),new T.Vector2(radius,bottom+lip),points[0].clone());
+ return new T.LatheGeometry(points,32).rotateX(Math.PI/2);
+}
+export function createVehicle(id,{envMap=null}={}){
  const preset=getVehicle(id),group=new T.Group(),propellers=[];
  group.name=preset.id;group.userData.vehicleId=preset.id;
- const material=(color,metalness=0)=>new T.MeshStandardMaterial({color,roughness:.5,metalness});
- const carbon=material('#182326',.3),shell=material(preset.color),duct=material('#e9e9d9'),metal=material('#93a9b5',.7),lens=material('#081720',.7);
+ // Resin-coated carbon and painted shells carry a clear coat; motors and the
+ // lens reflect the shared sky environment when one is supplied.
+ const material=parameters=>{const m=new T.MeshPhysicalMaterial(parameters);if(envMap){m.envMap=envMap;m.envMapRotation.x=Math.PI/2}return m};
+ const carbon=material({color:'#182326',roughness:.5,metalness:.3,clearcoat:.6,clearcoatRoughness:.28,envMapIntensity:.5}),shell=material({color:preset.color,roughness:.36,metalness:0,clearcoat:.85,clearcoatRoughness:.16,envMapIntensity:.6}),duct=material({color:'#e9e9d9',roughness:.44,metalness:0,clearcoat:.35,clearcoatRoughness:.35,envMapIntensity:.4}),metal=material({color:'#93a9b5',roughness:.3,metalness:.85,envMapIntensity:.9}),lens=material({color:'#081720',roughness:.06,metalness:.2,clearcoat:1,clearcoatRoughness:.04,envMapIntensity:1});
  function add(geo,mat,position){const m=new T.Mesh(geo,mat);m.position.set(...position);m.castShadow=m.receiveShadow=true;group.add(m);return m}
  const box=(position,size,mat)=>add(new T.BoxGeometry(...size),mat,position);
  const ball=(position,size,mat)=>{const m=add(new T.SphereGeometry(1,20,12),mat,position);m.scale.set(...size);return m};
@@ -31,14 +43,14 @@ export function createVehicle(id){
  }else{
   box([0,0,.007],[.030,.045,.004],carbon);box([0,-.003,-.003],[.021,.036,.013],metal);box([0,-.003,-.004],[.023,.009,.015],carbon);
  }
- const {span,radius}=preset;
+ const {span,radius}=preset,ductShape=preset.guards?ductGeometry(radius,cine?.022:.014,cine?.0022:.0018):null;
  const spanX=racer?span*.90:span,spanY=racer?span*1.30:span;
  for(const x of [-spanX,spanX])for(const y of [-spanY,spanY]){
   const arm=box([x/2,y/2,.004],[Math.hypot(x,y),.005,.004],carbon);arm.rotation.z=Math.atan2(y,x);
-  if(preset.guards){const guard=add(new T.CylinderGeometry(radius,radius,cine?.022:.014,32,1,true),duct,[x,y,cine?.015:.011]);guard.rotation.x=Math.PI/2;for(const z of cine?[.004,.026]:[.004,.018])add(new T.TorusGeometry(radius,cine?.0022:.0018,6,32),duct,[x,y,z]);}
+  if(preset.guards)add(ductShape,duct,[x,y,cine?.015:.011]).name='duct';
   const motor=add(new T.CylinderGeometry(.004,.004,.013,12),metal,[x,y,.009]);motor.rotation.x=Math.PI/2;
   const prop=new T.Group();prop.position.set(x,y,.02);
-  for(let i=0;i<preset.blades;i++){const a=i*Math.PI*2/preset.blades,b=new T.Mesh(new T.SphereGeometry(1,12,6),shell);b.scale.set(.0034,radius*.48,.0008);b.rotation.z=a;b.position.set(-Math.sin(a)*radius*.43,Math.cos(a)*radius*.43,0);prop.add(b)}
+  for(let i=0;i<preset.blades;i++){const a=i*Math.PI*2/preset.blades,b=new T.Mesh(new T.SphereGeometry(1,12,6),shell);b.name='prop-blade';b.scale.set(.0034,radius*.48,.0008);b.rotation.z=a;b.position.set(-Math.sin(a)*radius*.43,Math.cos(a)*radius*.43,0);prop.add(b)}
   group.add(prop);propellers.push(prop);
  }
  const h=preset.id==='micro65'?.021:preset.id==='scout85'?.030:.027;
@@ -70,3 +82,29 @@ export function createVehicle(id){
  return {group,propellers,preset};
 }
 export function disposeVehicle(group){const geometries=new Set(),materials=new Set();group.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)materials.add(o.material)});geometries.forEach(g=>g.dispose());materials.forEach(m=>m.dispose());}
+// Radial alpha for a spinning-prop disc: clear hub, faint blade ghosts, soft rim.
+let blurAlpha=null;
+function propBlurAlpha(){
+ if(blurAlpha)return blurAlpha;
+ const size=64,data=new Uint8Array(size*size*4);
+ for(let j=0;j<size;j++)for(let i=0;i<size;i++){const x=(i+.5)/size*2-1,y=(j+.5)/size*2-1,r=Math.hypot(x,y),a=Math.atan2(y,x),o=(j*size+i)*4;
+  const alpha=r>1?0:Math.min(1,Math.max(0,(r-.18)/.17))*(1-Math.pow(r,6))*(.42+.12*Math.cos(a*3));data[o]=data[o+1]=data[o+2]=Math.round(alpha*255);data[o+3]=255}
+ blurAlpha=new T.DataTexture(data,size,size);blurAlpha.magFilter=T.LinearFilter;blurAlpha.minFilter=T.LinearMipmapLinearFilter;blurAlpha.generateMipmaps=true;blurAlpha.needsUpdate=true;
+ return blurAlpha;
+}
+// Flight copy of an airframe: static parts merged per material (a handful of
+// draws instead of ~40, also in the shadow pass) and each prop's blades merged.
+// Armed props show a translucent blur disc instead of individual blades.
+export function bakeVehicle(model){
+ const {group,propellers,preset}=model,batcher=createStaticBatcher({contact:false,cell:Infinity});
+ batcher.batch(group);
+ const blurMaterial=new T.MeshLambertMaterial({color:preset.color,alphaMap:propBlurAlpha(),transparent:true,depthWrite:false,side:T.DoubleSide});
+ const blurGeometry=new T.CircleGeometry(preset.radius*.91,24);
+ for(const prop of propellers){
+  batcher.batch(prop);
+  const blur=new T.Mesh(blurGeometry,blurMaterial);blur.name='prop-blur';blur.visible=false;blur.userData.dynamic=true;prop.add(blur);
+  prop.userData.blur=amount=>{for(const child of prop.children)child.visible=child===blur?amount>.5:amount<=.5};
+ }
+ group.traverse(o=>{if(o.isMesh&&o.name!=='prop-blur')o.castShadow=o.receiveShadow=true});
+ return model;
+}
