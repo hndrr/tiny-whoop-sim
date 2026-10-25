@@ -11,8 +11,8 @@ export const QUALITY_LEVELS=Object.freeze([
 ]);
 // A display slower than `minRefresh` is never assumed from frame times alone:
 // a 60 Hz phone held at 30 fps by load looks exactly like a 30 Hz display.
-// The budget stays at 60 Hz until a step down fails to speed frames up; only
-// then is the slower rate accepted as a refresh cap and the level restored.
+// The budget stays at 60 Hz until even the lowest level fails to speed frames
+// up; only then is the slower rate accepted as a refresh cap and restored.
 export const QUALITY=Object.freeze({down:1.2,up:1.05,downAfter:1.5,upAfter:5,dwell:3,stall:250,smoothing:.1,refreshSamples:120,refreshRates:[30,60,75,90,120,144,165,240],minRefresh:60,capTolerance:.05});
 export function levelIndex(name){return QUALITY_LEVELS.findIndex(level=>level.name===name)}
 // Coarse-pointer devices start below the top level and never use MSAA there.
@@ -49,10 +49,15 @@ export function createQualityController({coarse=false,override=null,onChange=()=
    over=cost>QUALITY.down?over+seconds:0;under=cost<QUALITY.up?under+seconds:0;
    if(probing!==null&&sinceChange<QUALITY.dwell+QUALITY.downAfter&&over>QUALITY.downAfter){upWait[probing]*=2;const failed=probing;probing=null;set(failed+1,'probe failed');return index}
    if(sinceChange<QUALITY.dwell)return index;
-   // A step down that did not speed frames up, on a device never seen above
-   // the budget rate, means the display itself is slow: learn it and restore.
-   if(stepFrom!==null){const from=stepFrom;stepFrom=null;if(smoothed>=from.ms*(1-QUALITY.capTolerance)&&observedMs>floorMs+.01){capMs=snapRefresh([smoothed]);refreshMs=capMs;set(from.index,'refresh cap');return index}}
-   if(over>QUALITY.downAfter&&index<QUALITY_LEVELS.length-1){probing=null;if(observedMs>floorMs+.01)stepFrom={index,ms:smoothed};set(index+1,'over budget')}
+   // One step that does not speed frames up proves nothing: under vsync two
+   // levels can both miss the same frame. Keep stepping; only when even the
+   // lowest level is no faster than where the drops began, on a device never
+   // seen at the budget rate, is the display itself slow: learn it, restore.
+   if(stepFrom!==null){
+    if(smoothed<stepFrom.ms*(1-QUALITY.capTolerance)||observedMs<=floorMs+.01)stepFrom=null;
+    else if(index>=QUALITY_LEVELS.length-1){const back=stepFrom.index;stepFrom=null;capMs=snapRefresh([smoothed]);refreshMs=capMs;set(back,'refresh cap');return index}
+   }
+   if(over>QUALITY.downAfter&&index<QUALITY_LEVELS.length-1){probing=null;if(stepFrom===null&&observedMs>floorMs+.01)stepFrom={index,ms:smoothed};set(index+1,'over budget')}
    else if(under>upWait[Math.max(floor,index-1)]&&index>floor){probing=index-1;set(index-1,'headroom')}
    else if(probing!==null&&sinceChange>QUALITY.dwell+QUALITY.downAfter)probing=null;
    return index;
