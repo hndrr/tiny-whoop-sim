@@ -25,11 +25,13 @@ export function cellsInRange(x,y,{cell=GRASS_FIELD.cell,radius=GRASS_FIELD.radiu
 }
 export const maxCells=({cell=GRASS_FIELD.cell,radius=GRASS_FIELD.radius}={})=>{let n=0;const reach=radius+cell*.7072;for(let x=0;x<cell;x+=cell/4)for(let y=0;y<cell;y+=cell/4)n=Math.max(n,cellsInRange(x,y,{cell,radius}).length);return n};
 // Blade transforms for one cell: [x,y,z,yaw,tilt,scale,tint] or null (bare).
-export function cellBlades(i,j,count,{terrainHeight,exclude=()=>false,cell=GRASS_FIELD.cell}){
+// `surface(x,y)` gives the drawn ground ({z, slope}); without it, a central
+// difference of `terrainHeight` stands in (plain height fields in tests).
+const sampledSurface=terrainHeight=>(x,y)=>({z:terrainHeight(x,y),slope:Math.hypot(terrainHeight(x+.8,y)-terrainHeight(x-.8,y),terrainHeight(x,y+.8)-terrainHeight(x,y-.8))/1.6});
+export function cellBlades(i,j,count,{terrainHeight,surface=sampledSurface(terrainHeight),exclude=()=>false,cell=GRASS_FIELD.cell}){
  const c=GRASS_FIELD,blades=[];
  for(let k=0;k<count;k++){
-  const x=(i+hash(i,j,k*4+1))*cell,y=(j+hash(i,j,k*4+2))*cell,z=terrainHeight(x,y);
-  const slope=Math.hypot(terrainHeight(x+.8,y)-terrainHeight(x-.8,y),terrainHeight(x,y+.8)-terrainHeight(x,y-.8))/1.6;
+  const x=(i+hash(i,j,k*4+1))*cell,y=(j+hash(i,j,k*4+2))*cell,{z,slope}=surface(x,y);
   // Meadow clumps: a low-frequency mask thins grass into patches.
   const clump=.5+.5*Math.sin(x*.21+Math.sin(y*.17)*1.7)*Math.cos(y*.19-x*.05);
   if(z<c.shoreTop||z>c.stoneLine||slope>c.maxSlope||hash(i,j,k*4+3)>.35+.65*clump||exclude(x,y)){blades.push(null);continue}
@@ -53,7 +55,7 @@ export function tuftGeometry(blade,count=4){
 // Instances are laid out band-major: band b of every slot sits together, so
 // lowering the density only lowers mesh.count and the GPU skips the unused
 // bands entirely. Each band of a cell is one contiguous upload range.
-export function createGrassField({geometry,material,terrainHeight,exclude=()=>false,capacity=GRASS_FIELD.capacity}){
+export function createGrassField({geometry,material,terrainHeight,surface=sampledSurface(terrainHeight),exclude=()=>false,capacity=GRASS_FIELD.capacity}){
  const c=GRASS_FIELD,B=c.band,slots=maxCells(),bands=Math.max(1,Math.floor(capacity/slots/B)),perCell=bands*B;
  const mesh=new T.InstancedMesh(geometry,material,slots*perCell);mesh.name='grass-field';mesh.frustumCulled=false;mesh.receiveShadow=true;mesh.castShadow=false;
  const zero=new T.Matrix4().makeScale(0,0,0),dummy=new T.Object3D(),tint=new T.Color();
@@ -61,7 +63,7 @@ export function createGrassField({geometry,material,terrainHeight,exclude=()=>fa
  const live=new Map(),free=Array.from({length:slots},(_,n)=>n);let used=bands,filled=0;
  const key=(i,j)=>`${i},${j}`,index=(slot,band,b)=>(band*slots+slot)*B+b;
  function fill(slot,i,j){
-  const blades=cellBlades(i,j,used*B,{terrainHeight,exclude});
+  const blades=cellBlades(i,j,used*B,{surface,exclude});
   for(let band=0;band<used;band++){
    for(let b=0;b<B;b++){
     const blade=blades[band*B+b],n=index(slot,band,b);

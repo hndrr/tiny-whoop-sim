@@ -3,6 +3,7 @@ import {readFileSync} from 'node:fs';
 import * as T from './dist/vendor/three.module.min.js';
 import {GRASS_FIELD,footprintIndex,boxFootprint,cellsInRange,maxCells,cellBlades,tuftGeometry,createGrassField} from './dist/grass-field.mjs';
 import {terrainHeight,WORLD_OBJECTS} from './dist/world.mjs';
+import {createTerrainGeometry,renderedTerrainSurface} from './dist/terrain-visuals.mjs';
 import {SOLIDS} from './dist/stage.mjs';
 import {QUALITY_LEVELS} from './dist/render-quality.mjs';
 // Footprints: inclusive rectangles across grid cells, margins honoured.
@@ -25,6 +26,18 @@ assert(cellBlades(4,-2,80,{terrainHeight:(x)=>x*.8}).every(v=>v===null),'steep r
 const exclude=footprintIndex([boxFootprint([5,25,0],[23,125,.05],.4),...[...SOLIDS,...WORLD_OBJECTS].map(o=>boxFootprint(o.position,o.size,.6))]);
 let meadow=0;for(const c of cellsInRange(-30,20,{radius:40}))for(const p of cellBlades(c.i,c.j,40,{terrainHeight,exclude}))if(p){assert(!exclude(p[0],p[1]));meadow++}
 assert(meadow>300,`airfield meadow has grass (${meadow})`);
+// Grass stands on the drawn near mesh, not the analytic field: raycast real
+// patches (including edges and a curved hillside) against renderedTerrainSurface.
+{const down=new T.Vector3(0,0,-1),ray=new T.Raycaster(),hits=[];let worst=0,analyticGap=0;
+ for(const [cx,cy] of [[250,-250],[250,250],[-750,1250],[1750,-250]]){const mesh=new T.Mesh(createTerrainGeometry(cx,cy,24),new T.MeshBasicMaterial({side:T.DoubleSide}));mesh.position.set(cx,cy,0);mesh.updateMatrixWorld();
+  for(let n=0;n<160;n++){const x=cx-249.5+((n*37)%160)/160*499,y=cy-249.5+((n*91)%157)/157*499;ray.set(new T.Vector3(x,y,2000),down);const hit=ray.intersectObject(mesh)[0];if(!hit)continue;hits.push(1);
+   worst=Math.max(worst,Math.abs(hit.point.z-renderedTerrainSurface(x,y).z));analyticGap=Math.max(analyticGap,Math.abs(hit.point.z-terrainHeight(x,y)))}
+  mesh.geometry.dispose()}
+ assert(hits.length>600);assert(worst<1e-3,`rendered surface matches the float32 mesh (${worst})`);assert(analyticGap>1,'the analytic field alone would float or bury tufts');
+ const reported=renderedTerrainSurface(297.37314,-0.05495);assert(Math.abs(reported.z-54.14084)<1e-4,'review case: root on the drawn ground, not 13.8 m above it');
+ assert(cellBlades(18,-1,400,{surface:renderedTerrainSurface}).filter(Boolean).every(b=>Math.abs(b[2]-renderedTerrainSurface(b[0],b[1]).z)<1e-9));
+ // Slope comes from the drawn triangle; the steep review-case face is left bare.
+ assert(reported.slope>GRASS_FIELD.maxSlope);}
 // Tuft: several fanned blades, same vertex layout, still upright for the wind bend.
 const blade=new T.PlaneGeometry(.08,.42,1,2);blade.translate(0,.21,0);blade.setAttribute('color',new T.Float32BufferAttribute(new Float32Array(blade.attributes.position.count*3).fill(1),3));blade.rotateX(Math.PI/2);
 const tuft=tuftGeometry(blade);assert.equal(tuft.attributes.position.count,blade.attributes.position.count*4);assert.equal(tuft.index.count,blade.index.count*4);assert(tuft.attributes.color);
@@ -40,7 +53,7 @@ const dense=nonzero(),drawn=field.drawn;field.setDensity(QUALITY_LEVELS.at(-1).g
 field.setDensity(1);for(let i=0;i<40;i++)field.update(pos);assert.equal(field.drawn,drawn);assert(Math.abs(nonzero()-dense)<=dense*.02,'restores the same meadow');
 for(let i=1;i<QUALITY_LEVELS.length;i++)assert(QUALITY_LEVELS[i].grass<=QUALITY_LEVELS[i-1].grass);
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
-assert(main.includes('grassField.update(camera.position)')&&main.includes('grassField.setDensity(level.grass)'));
+assert(main.includes('grassField.update(camera.position)')&&main.includes('grassField.setDensity(level.grass)')&&main.includes('surface:renderedTerrainSurface,'));
 assert(main.indexOf('const grassField=')<main.indexOf('const renderQuality='),'exists before the first quality apply');
 console.log('PASS: footprint index, nearest-first cells within reach, deterministic hashed tufts, bare paving/beach/rock/stone, airfield meadow coverage, tuft geometry, slot recycling, altitude hide, quality density');
 console.log('CPU checks only; the look and GPU cost of the meadow need browser/device verification.');
