@@ -36,7 +36,8 @@ const pos=new T.Vector3(0,0,3);field.update(pos);assert.equal(field.cells,GRASS_
 pos.set(400,0,3);for(let i=0;i<40;i++)field.update(pos);assert.equal(field.cells,cellsInRange(400,0).length,'slots recycled after relocation');
 pos.z=1+GRASS_FIELD.hideAbove+1;field.update(pos);assert.equal(field.mesh.visible,false);pos.z=3;field.update(pos);assert(field.mesh.visible);
 const nonzero=()=>{let n=0;const m=field.mesh.instanceMatrix.array;for(let i=0;i<field.mesh.count;i++)if(m[i*16]||m[i*16+1]||m[i*16+2])n++;return n};
-const dense=nonzero();field.setDensity(QUALITY_LEVELS.at(-1).grass);for(let i=0;i<40;i++)field.update(pos);assert(nonzero()<dense*.45,'low quality thins the meadow');
+const dense=nonzero(),drawn=field.drawn;field.setDensity(QUALITY_LEVELS.at(-1).grass);for(let i=0;i<40;i++)field.update(pos);assert(nonzero()<dense*.45,'low quality thins the meadow');assert(field.drawn<drawn*.4&&field.drawn===field.mesh.count,'and draws fewer instances');
+field.setDensity(1);for(let i=0;i<40;i++)field.update(pos);assert.equal(field.drawn,drawn);assert(Math.abs(nonzero()-dense)<=dense*.02,'restores the same meadow');
 for(let i=1;i<QUALITY_LEVELS.length;i++)assert(QUALITY_LEVELS[i].grass<=QUALITY_LEVELS[i-1].grass);
 const main=readFileSync(new URL('./dist/main.mjs',import.meta.url),'utf8');
 assert(main.includes('grassField.update(camera.position)')&&main.includes('grassField.setDensity(level.grass)'));

@@ -209,3 +209,19 @@ The upgrade borrows from two references: the Open Water real-time sea study, and
 
 Draw calls fell 5–10× across the fixed poses. For example, airfield FPV went from 599 to 67 and the aloft view from 651 to 65. These are desktop headless-Chrome measurements; frame rate on a physical phone has not been measured.
 
+
+## Graphics upgrade 3: goggle OSD, meadow detail and sky
+
+Plan: [docs/graphics-upgrade-3-plan.md](docs/graphics-upgrade-3-plan.md).
+
+- **Steady FPV picture.** The FPV camera is treated as hard-mounted. Turbulence no longer yaws the lens against its own ducts, and the per-frame scanline wobble is gone. Only a sub-pixel pitch vibration remains. Angular rates for the rolling-shutter skew and rotation blur are low-passed. The chase camera keeps its soft-mount motion.
+- **Goggle OSD** (`dist/osd.mjs`). FPV gets an artificial horizon and a ±10/20° pitch ladder, projected through the real camera so they line up with the picture. Both views get:
+  - a sliding compass tape with a HOME marker
+  - a rotating HOME arrow
+  - a vertical-speed gauge
+  - a segmented throttle bar and mint-accented telemetry panels
+- **Meadow detail.** Grass tufts follow the camera within the grass fade distance (`dist/grass-field.mjs`). Each 16 m cell is filled from its own hash, and the tufts stay off paving, building footprints, beach, steep rock and high stone. The ground shader adds close-range grass/earth patches, a small sun-lit relief and flower specks. The asphalt gets world-space patching, oil stains and wheel streaks, which break up the 4 m tile.
+- **Sky and light.** Sky, terrain and sea share one cloud layer. Clouds stay fixed in the world as you fly, and their shadows drift over the ground and sea. Clouds now have darker bases, a sun-side silver lining and a thin cirrus deck. The video pass adds light shafts toward the sun.
+- **Quality.** The new `grass` (instance count) and `shafts` (taps) settings step down with the adaptive level. Touch devices use a smaller grass budget.
+
+Scene draw calls rise by 1 (the meadow) in both views, measured in headless Chrome at 1280×720 against `f92e201`. Triangles rise by about 143k at `high` and 36k at `low`. Physical-device frame rate has not been measured.

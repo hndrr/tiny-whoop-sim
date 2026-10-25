@@ -260,3 +260,25 @@ Measurements (headless Chrome, 1280×720, against `83eacee`):
 - Scene draw calls rose by 2–3 at each pose; the new parts are the FPV ducts and props, the LED and the dust.
 - Live 60 Hz flight stays at cost 1.00 on the `high` level, P95 16.7 ms in both views.
 - No physical-device measurement.
+
+## Graphics upgrade 3: OSD, meadow and sky
+
+Plan: [graphics-upgrade-3-plan.md](graphics-upgrade-3-plan.md).
+
+Measurements against `f92e201`, airfield spawn, headless Chrome (SwiftShader), 1280×720:
+
+| quality | view | scene calls | triangles |
+|---|---|---:|---:|
+| high | FPV | 70 → 71 | 158k → 302k |
+| high | CHASE | 73 → 74 | 162k → 306k |
+| low | FPV | 70 → 71 | 158k → 194k |
+| low | CHASE | 73 → 74 | 158k → 194k |
+
+How the new work is kept cheap:
+- The meadow is one instanced draw. Its instances are laid out band-major, so a lower quality level only lowers `mesh.count` and unused bands cost nothing. Cells are filled a few per frame, and each band is uploaded as one contiguous range.
+- Cloud shadows add one 3-octave noise per terrain and sea pixel. Light shafts add 12/8/6/0 depth taps by quality level, inside the existing post pass.
+- The OSD writes a style only when its rounded value changes.
+
+FPV steadiness: frame-to-frame horizontal image shift while hovering went from ±0.75 px at 160 px width (about 0.5% of the width) to 0, measured by cross-correlating centre strips of consecutive frames.
+
+SwiftShader timings are not GPU timings. Physical-device frame rate still needs checking.
