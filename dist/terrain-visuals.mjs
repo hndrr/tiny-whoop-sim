@@ -1,5 +1,7 @@
 import * as T from './vendor/three.module.min.js';
 import {WORLD_HALF,terrainHeight} from './world.mjs';
+import {ATMOSPHERE} from './atmosphere.mjs';
+const SUN=ATMOSPHERE.sunDirection;
 
 const clamp01=value=>Math.max(0,Math.min(1,value));
 const blend=(low,high,value)=>{const t=clamp01((value-low)/(high-low));return t*t*(3-2*t)};
@@ -63,7 +65,7 @@ export function noiseMapMean(low=210,span=24,steps=4096){
  for(let i=0;i<steps;i++)sum+=eotf((low+span*(i+.5)/steps)/255);
  return sum/steps;
 }
-export const TERRAIN_SHADING=Object.freeze({detailNear:60,detailFar:380,rockSlope:[.18,.32],macroScale:[170,47],shoreTop:1.6,wetTop:-1.4});
+export const TERRAIN_SHADING=Object.freeze({detailNear:60,detailFar:380,patchNear:18,patchFar:55,rockSlope:[.18,.32],macroScale:[170,47],shoreTop:1.6,wetTop:-1.4});
 // Per-pixel richness on the faceted terrain, all procedural and texture-free:
 // broad soil/vegetation variation, rock on steep faces, a wet shoreline band.
 // The grain map fades to its mean with distance (no distant moire), like an
@@ -98,8 +100,23 @@ diffuseColor.rgb*=mix(vec3(${f(detailMean)}),texture2D(map,vMapUv).rgb,terrainNe
  if(rock>0.){float grain=terrainNoise(vTerrainWorld.xy/7.)*.6+terrainNoise(vTerrainWorld.xy/2.3)*.4;diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.205,.196,.172)*(.78+.44*grain),rock*.85);}
  diffuseColor.rgb*=1.-.32*(1.-smoothstep(${f(-2.4)},${f(c.wetTop)},vTerrainWorld.z));
  diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.29,.25,.17),(1.-smoothstep(${f(c.wetTop)},${f(c.shoreTop)},vTerrainWorld.z))*.35);
+ // Close-range ground: grass and bare-earth patches at a few metres, a small
+ // sun-lit relief and sparse flower specks. Fades out before it can alias.
+ float patchNear=1.-smoothstep(${f(c.patchNear)},${f(c.patchFar)},distance(vTerrainWorld,cameraPosition));
+ if(patchNear>0.){
+  vec2 w=vTerrainWorld.xy;
+  float patchN=terrainNoise(w/3.1)*.6+terrainNoise(w/1.3+4.7)*.4;
+  float land=(1.-rock)*smoothstep(${f(c.wetTop)},${f(c.wetTop+.8)},vTerrainWorld.z)*(1.-smoothstep(230.,280.,vTerrainWorld.z));
+  float grassy=smoothstep(.4,.62,patchN)*land;
+  diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(.74,.93,.58),grassy*.6*patchNear);
+  diffuseColor.rgb=mix(diffuseColor.rgb,diffuseColor.rgb*vec3(1.04,.9,.74),smoothstep(.3,.14,patchN)*land*.45*patchNear);
+  vec2 e=vec2(.35,0.);float hx=terrainNoise((w+e)/.9)-terrainNoise((w-e)/.9),hy=terrainNoise((w+e.yx)/.9)-terrainNoise((w-e.yx)/.9);
+  diffuseColor.rgb*=1.+clamp(hx*${f(-SUN[0])}+hy*${f(-SUN[1])},-.6,.6)*.32*patchNear;
+  vec2 cell=floor(w*2.5);float speck=step(.982,terrainHash(cell))*step(length(fract(w*2.5)-.5),.16)*grassy;
+  diffuseColor.rgb=mix(diffuseColor.rgb,terrainHash(cell+3.1)>.5?vec3(.86,.8,.36):vec3(.82,.84,.86),speck*.8*patchNear);
+ }
 }`);
  };
- material.customProgramCacheKey=()=>'terrain-shading-v1';
+ material.customProgramCacheKey=()=>'terrain-shading-v2';
  return material;
 }

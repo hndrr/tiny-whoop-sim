@@ -7,7 +7,7 @@ export function createSurfaceMaterials(renderer,{coarse=false}={}){
  // Smaller 128px detail for cargo surfaces: ribs and boards stay several texels
  // wide at their tile scale. Colour is divided by the map's mean albedo.
  function detailed(kind,tileMeters,bumpScale,color,roughness,metalness){const map=texture(kind,false,128),detail=texture(kind,true,128),material=new T.MeshStandardMaterial({color,map,roughnessMap:detail,bumpMap:detail,bumpScale,roughness,metalness});material.color.multiplyScalar(1/meanLinearAlbedo(map.image.data));material.userData.tileMeters=tileMeters;return material}
- return {asphalt:surface('asphalt',4,.025),concrete:surface('concrete',3,.018),container:detailed('corrugated',2,.012,'#6b827b',.75,.15),crate:detailed('planks',1.5,.01,'#8c704b',1,0),textures};
+ return {asphalt:weathered(surface('asphalt',4,.025)),concrete:surface('concrete',3,.018),container:detailed('corrugated',2,.012,'#6b827b',.75,.15),crate:detailed('planks',1.5,.01,'#8c704b',1,0),textures};
 }
 // Box faces use metre-scaled UVs, avoiding stretched aggregate on long runways.
 export function surfaceBoxGeometry(size,tileMeters){const geo=new T.BoxGeometry(1,1,1),uv=geo.attributes.uv,normals=geo.attributes.normal;for(let i=0;i<uv.count;i++){const nx=Math.abs(normals.getX(i)),ny=Math.abs(normals.getY(i));const width=nx>.5?size[2]:size[0],height=ny>.5?size[2]:size[1];uv.setXY(i,uv.getX(i)*width/tileMeters,uv.getY(i)*height/tileMeters)}return geo}
@@ -42,3 +42,35 @@ export function scaleCylinderSurfaceUV(geometry,{diameter,height,tileMeters,repe
  }
  return geometry;
 }
+// Breaks the 4 m asphalt tile at runway scale: broad world-space patching,
+// darker oil/rubber patches and faint wheel streaks along the runway (+y).
+// Mean multiplier stays ~1, so the authored average brightness is kept.
+export function weathered(material){
+ const previous=material.onBeforeCompile,key=material.customProgramCacheKey.bind(material);
+ material.onBeforeCompile=function(shader,renderer){
+  previous.call(this,shader,renderer);
+  shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vSurfaceWorld;').replace('#include <begin_vertex>',`#include <begin_vertex>
+vec4 surfaceWorld=vec4(transformed,1.);
+#ifdef USE_BATCHING
+surfaceWorld=batchingMatrix*surfaceWorld;
+#endif
+#ifdef USE_INSTANCING
+surfaceWorld=instanceMatrix*surfaceWorld;
+#endif
+vSurfaceWorld=(modelMatrix*surfaceWorld).xyz;`);
+  shader.fragmentShader=shader.fragmentShader.replace('#include <common>',`#include <common>
+varying vec3 vSurfaceWorld;
+float wearHash(vec2 p){vec3 q=fract(vec3(p.xyx)*.1031);q+=dot(q,q.yzx+33.33);return fract((q.x+q.y)*q.z);}
+float wearNoise(vec2 p){vec2 i=floor(p),u=fract(p);u=u*u*(3.-2.*u);return mix(mix(wearHash(i),wearHash(i+vec2(1.,0.)),u.x),mix(wearHash(i+vec2(0.,1.)),wearHash(i+vec2(1.,1.)),u.x),u.y);}`).replace('#include <map_fragment>',`#include <map_fragment>
+{
+ vec2 w=vSurfaceWorld.xy;
+ float broad=wearNoise(w/23.)*.6+wearNoise(w/9.+5.1)*.4;
+ float stain=smoothstep(.62,.8,wearNoise(w/5.3+11.7));
+ float streak=smoothstep(.55,.85,wearNoise(vec2(w.x*1.4,w.y*.035)+2.3))*smoothstep(.3,.6,wearNoise(w/31.));
+ diffuseColor.rgb*=(.9+.2*broad)*(1.-.22*stain)*(1.-.18*streak)*1.035;
+}`);
+ };
+ material.customProgramCacheKey=()=>`${key()}|weathered-v1`;
+ return material;
+}
+
