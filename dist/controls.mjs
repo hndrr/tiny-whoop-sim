@@ -2,12 +2,15 @@
 const clamp = value => Math.max(-1, Math.min(1, value));
 export function controlInput(keys, axes = {}) {
   const k = code => keys.has(code) ? 1 : 0;
-  return {
+  const input = {
     pitch: clamp(k('ArrowUp') - k('ArrowDown') + (axes.pitch || 0)),
     roll: clamp(k('ArrowRight') - k('ArrowLeft') + (axes.roll || 0)),
     yaw: clamp(k('KeyA') + k('KeyQ') - k('KeyD') - k('KeyE') + (axes.yaw || 0)),
     throttle: clamp(k('KeyW') - k('KeyS') + (axes.throttle || 0)),
   };
+  const length = Math.hypot(input.pitch, input.roll);
+  if (length > 1) { input.pitch /= length; input.roll /= length; }
+  return input;
 }
 
 export function bindSticks(root, keys, axes) {
@@ -49,8 +52,8 @@ export function bindSticks(root, keys, axes) {
     const input = controlInput(keys, axes);
     for (const {el, horizontal, vertical, direction} of sticks) {
       const x = input[horizontal] * direction, y = -input[vertical];
-      // Axes saturate independently in physics, so diagonal keyboard inputs use
-      // the full square travel rather than silently reducing either axis.
+      // The right stick uses the same circular envelope for keys, pointers,
+      // flight thrust and its indicator; left-stick axes remain independent.
       const limit = el.getBoundingClientRect().width * .33;
       el.querySelector('.knob').style.transform = `translate(${x * limit}px, ${y * limit}px)`;
       el.classList.toggle('active', x !== 0 || y !== 0);

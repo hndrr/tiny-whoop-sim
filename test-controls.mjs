@@ -8,7 +8,7 @@ assert.deepEqual(read(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyW','Ke
 assert.equal(read(['KeyA','KeyQ']).yaw,1,'yaw aliases saturate');
 assert.equal(read(['ArrowUp'],{pitch:-.4}).pitch,.6,'mouse + keyboard mix');
 assert.equal(read(['ArrowUp'],{pitch:1}).pitch,1,'mixed inputs saturate');
-assert.deepEqual(read(['ArrowUp','ArrowRight','KeyW','KeyA']),{pitch:1,roll:1,throttle:1,yaw:1},'simultaneous dual-stick keyboard inputs');
+assert.deepEqual(read(['ArrowUp','ArrowRight','KeyW','KeyA']),{pitch:1/Math.sqrt(2),roll:1/Math.sqrt(2),throttle:1,yaw:1},'simultaneous dual-stick keyboard inputs');
 const a=new FlightState(),b=new FlightState();a.paused=b.paused=false;
 a.step(.02,new Set(['ArrowUp','ArrowRight','KeyW','KeyQ']));b.step(.02,new Set(),{pitch:1,roll:1,throttle:1,yaw:1});
 assert.deepEqual(a,b,'physics uses the same normalized input as the indicators');

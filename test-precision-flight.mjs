@@ -21,7 +21,7 @@ function pilot(state,objective){
 }
 
 const results=[];
-for(const {id:aircraft} of VEHICLES)for(const fps of [30,60,120]){
+for(const {id:aircraft} of VEHICLES)for(const fps of [30,60,144]){
  const state=new FlightState(),mission=new PrecisionMission(),keys=new Set();
  state.setAircraft(aircraft);mission.start(state);state.paused=false;
  const dt=1/fps,events=[];

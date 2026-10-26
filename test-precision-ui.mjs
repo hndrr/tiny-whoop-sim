@@ -39,7 +39,7 @@ const hudSource=main.slice(main.indexOf('function updateHUD(){'),main.indexOf('c
 const $=id=>{if(!nodes.has(id)){const n=new Node();n.id=id}return nodes.get(id)};
 const updateHUD=runInNewContext(hudSource+';updateHUD',{
  document,$,s:state,precision:ui,i18n,localizeFlight,fpv:true,GATES,...world,
- flightStarted:false,gates:[],gateIdle:null,gateMint:null,gateDark:null,
+ flightStarted:false,gates:[],gateFixtures:{},gateIdle:null,gateMint:null,gateDark:null,hudOsd:{update(){}},camera:null,
 });
 const unsubscribe=i18n.subscribe(()=>{i18n.apply();updateHUD()});
 ui.mission.start(state);state.paused=false;

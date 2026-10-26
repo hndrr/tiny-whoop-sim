@@ -61,7 +61,7 @@ for(const stage of MISSION_STAGES.slice(0,3)){
 console.log(`PASS: ${volumeSamples} target-volume samples and ${adjacentSegments} adjacent-boundary routes clear actual geometry`);
 
 const results=[];
-for(const [stageIndex,stage] of MISSION_STAGES.slice(0,3).entries())for(const {id:aircraft} of VEHICLES)for(const fps of [30,60,120]){
+for(const [stageIndex,stage] of MISSION_STAGES.slice(0,3).entries())for(const {id:aircraft} of VEHICLES)for(const fps of [30,60,144]){
  const state=new FlightState(),mission=new PrecisionMission(),keys=new Set();
  state.setAircraft(aircraft);mission.start(state,stageIndex);state.paused=false;
  const dt=1/fps,events=[];
@@ -90,7 +90,7 @@ for(const [stageIndex,stage] of MISSION_STAGES.slice(0,3).entries())for(const {i
  assert.deepEqual([state.x,state.y,state.z],before,`${context}: completion does not teleport`);
  results.push({stage:stage.id,aircraft,fps,seconds:Number((frames/fps).toFixed(2))});
 }
-console.log('PASS: 45 continuous flights, all 3 stages × all 5 airframes × 30/60/120 Hz, normal controls, real collisions, no retry teleport');
+console.log('PASS: 45 continuous flights, all 3 stages × all 5 airframes × 30/60/144 Hz, normal controls, real collisions, no retry teleport');
 console.log(JSON.stringify(results,null,2));
 
 // A light initial drift represents releasing the controls during a stable hold.
