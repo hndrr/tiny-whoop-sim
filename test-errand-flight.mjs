@@ -39,7 +39,7 @@ for(const stage of MISSION_STAGES.slice(3,5)){
 const results=[];
 for(const [index,stage] of MISSION_STAGES.entries()){
  if(!['delivery','inspection'].includes(stage.kind))continue;
- for(const {id:aircraft} of VEHICLES)for(const fps of [30,60]){
+ for(const {id:aircraft} of VEHICLES)for(const fps of [30,60,144]){
   const state=new FlightState(),mission=new PrecisionMission();state.setAircraft(aircraft);mission.start(state,index);state.paused=false;
   const dt=1/fps,events=[];let frames=0;
   while(!mission.done&&!state.crashed&&frames<240*fps){

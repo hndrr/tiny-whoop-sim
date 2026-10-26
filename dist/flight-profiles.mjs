@@ -1,6 +1,6 @@
 // Deliberate arcade tuning, not measured hardware specifications.
-// WHOOP 75 keeps the original horizontal motion. Drag scales with acceleration
-// / topSpeed so a stronger launch need not also imply a higher cruise speed.
+// Acceleration and damping scale together to preserve relative cruise speeds.
+// Full-stick runs build speed; neutral-stick self-level assistance brakes drift.
 export const FLIGHT_PROFILES=Object.freeze(Object.fromEntries([
  {id:'whoop75',acceleration:1,response:1,topSpeed:1,description:'Balanced all-rounder · familiar, even handling'},
  {id:'micro65',acceleration:1.08,response:1.18,topSpeed:.90,description:'Nimble indoor flyer · quick turns, gentler top speed'},

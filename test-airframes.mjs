@@ -1,15 +1,18 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import * as T from './dist/vendor/three.module.min.js';
-import {VEHICLES,createVehicle,disposeVehicle,getVehicle} from './dist/vehicle-catalog.mjs';
+import {VEHICLES,createVehicle,disposeVehicle,getVehicle,bakeVehicle} from './dist/vehicle-catalog.mjs';
 
-// Geometry, transforms and material values captured before adding the two new frames.
-// Keep the original airframes intact while adding new silhouettes to the catalog.
+// Geometry, transforms and material values of the three original frames after the
+// graphics upgrade: one lathe duct with rounded bead lips replaces each cylinder
+// plus two torus rims, and materials gained clear coats. The exact bounding
+// envelope of every frame is pinned below and is unchanged from before.
 const originalSignatures={
- whoop75:'ed320221e081680e9df140829ff1dd085fb42c6a1998dff5a0068364c404c6dd',
- micro65:'2ab12546b4212f698fc41d65b95daea01a4f2a3ae029604ea00cfbdfb3e8a277',
- scout85:'add8f8e3521eb8e81ed1e9018189c7a4105ec650b6bc633fa21d5671cf3bf16c'
+ whoop75:'0bcae1aeba569ce770fae85dc686b4c73b16d02d7309677610b46b38e7f3a5c7',
+ micro65:'d2b2b9407c00823b603b1327733fdc781fea7c70bd562a14529321676c9e70d5',
+ scout85:'472515be66f236e5facd721b3f8c2bcf00c829c61f4ab159e3bd45f277b8dadb'
 };
+const envelopes={whoop75:[-.0508,-.0508,-.0115,.0508,.0508,.039],micro65:[-.0438,-.0438,-.0115,.0438,.0438,.029],scout85:[-.05384,-.05384,-.0115,.05384,.05384,.0415],racer90:[-.0337,-.06565,.002,.0337,.06565,.05],cine95:[-.0632,-.0632,-.0172,.0632,.0632,.0518]};
 function geometrySignature(group){
  const parts=[];
  group.traverse(o=>parts.push({
@@ -69,7 +72,9 @@ for(const preset of VEHICLES){
  assert.equal(new Set(propellers.map(p=>p.position.toArray().join(','))).size,4);
  assert.ok(propellers.every(p=>p.children.length===preset.blades));
  assert.ok(preset.camera.length===3&&preset.camera.every(Number.isFinite));
- assert.equal(group.children.filter(o=>o.geometry?.type==='TorusGeometry').length,preset.guards?8:0);
+ assert.equal(group.children.filter(o=>o.geometry?.type==='TorusGeometry').length,0,'rims are part of the lathe ducts');
+ assert.equal(group.children.filter(o=>o.name==='duct'&&o.geometry.type==='LatheGeometry').length,preset.guards?4:0);
+ {const b=meshBounds(group);[...b.min.toArray(),...b.max.toArray()].forEach((v,i)=>close(v,envelopes[preset.id][i],`${preset.id} envelope ${i}`))}
  const size=meshBounds(group).getSize(new T.Vector3());
  assert.ok(size.toArray().every(n=>Number.isFinite(n)&&n>0));
  if(originalSignatures[preset.id])assert.equal(geometrySignature(group),originalSignatures[preset.id],`${preset.id} original geometry/materials changed`);
@@ -94,7 +99,7 @@ for(const preset of VEHICLES){
   assert.equal(namedCount(group,'cine-landing-skid'),4);
   assert.equal(namedCount(group,'cine-skid-support'),4);
   assert.ok(group.children.filter(o=>o.name==='cine-landing-skid').every(o=>meshBounds(o).max.z<0));
-  assert.equal(group.children.filter(o=>o.geometry?.type==='CylinderGeometry'&&o.geometry.parameters.openEnded&&o.geometry.parameters.height===.022).length,4);
+  const ducts=group.children.filter(o=>o.name==='duct');assert.equal(ducts.length,4);for(const d of ducts){const b=meshBounds(d);close(b.max.z-b.min.z,.022+2*.0022,'deep cine duct with bead lips')}
   close(size.x,.1264,'cine width');close(size.y,.1264,'cine length');close(size.z,.069,'cine height');
   assertRotorClearance(model);
  }
@@ -107,5 +112,24 @@ for(const preset of VEHICLES){
  assert.equal(materialDisposals,materials.size,`${preset.id} must dispose every shared material exactly once`);
  stats.push({id:preset.id,boundsMm:size.toArray().map(n=>+(n*1000).toFixed(2)),meshes});
 }
+// Flight copies merge static parts per material and each prop's blades, and add
+// blur discs that replace blades while armed. Everything still disposes once.
+const baked=[];
+for(const preset of VEHICLES){
+ const raw=createVehicle(preset.id);let rawMeshes=0;raw.group.traverse(o=>{if(o.isMesh)rawMeshes++});
+ const model=bakeVehicle(createVehicle(preset.id));let meshes=0;model.group.traverse(o=>{if(o.isMesh)meshes++});
+ assert.equal(model.propellers.length,4);// Static parts + separate FPV-visible ducts + 4 props (blades, blur) + underglow.
+ assert(meshes<=15&&meshes<=rawMeshes/2,`${preset.id}: ${meshes} flight meshes vs ${rawMeshes}`);
+ const led=model.group.getObjectByName('underglow');assert(led&&led.material.userData.glow===1&&!led.castShadow);
+ model.group.userData.setView(true);assert(model.group.children.filter(c=>c.visible).every(c=>c.userData.batchTag==='fpv'||model.propellers.includes(c)),'FPV shows only ducts and props');model.group.userData.setView(false);assert(model.group.children.every(c=>c.visible))
+ for(const prop of model.propellers){const blur=prop.children.find(c=>c.name==='prop-blur');assert(blur&&!blur.visible);assert.equal(prop.children.length,2,'merged blades plus blur disc');
+  prop.userData.blur(1);assert(blur.visible&&prop.children.every(c=>c===blur||!c.visible));prop.userData.blur(0);assert(!blur.visible&&prop.children.every(c=>c===blur||c.visible))}
+ const visible=new T.Box3();model.group.traverse(o=>{if(o.isMesh&&o.name!=='prop-blur')visible.expandByObject(o,true)});
+ [...visible.min.toArray(),...visible.max.toArray()].forEach((v,i)=>close(v,envelopes[preset.id][i],`${preset.id} baked envelope ${i}`));
+ const geometries=new Set(),materials=new Set();let gd=0,md=0;model.group.traverse(o=>{if(o.geometry)geometries.add(o.geometry);if(o.material)materials.add(o.material)});
+ geometries.forEach(g=>g.addEventListener('dispose',()=>gd++));materials.forEach(m=>m.addEventListener('dispose',()=>md++));disposeVehicle(model.group);assert.equal(gd,geometries.size);assert.equal(md,materials.size);
+ baked.push({id:preset.id,rawMeshes,meshes});
+}
+console.log('Baked flight airframes:',JSON.stringify(baked));
 console.log('PASS: original geometry preserved, five distinct airframes, new structural components, static/swept dimensions, 17-slice rotor clearance, full GPU disposal');
 console.log(JSON.stringify(stats,null,2));

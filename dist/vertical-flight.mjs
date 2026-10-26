@@ -15,16 +15,30 @@ export const VERTICAL_FLIGHT=Object.freeze({
   releaseAcceleration:20,
   contactOffset:.08,
   maxSubstep:1/120,
+  // High air: above fastClearance the climb/descent limits grow with height
+  // so returning from a high-altitude transit takes seconds, not a minute.
+  // Descent follows a braking curve (descentBrake) back to the low-air limit,
+  // so a held full descent slows by itself before the near-surface zone.
+  fastClearance:30,
+  maxDescentSpeed:36,
+  descentBrake:5,
+  maxClimbSpeed:25,
+  climbGain:4,
+  maxAcceleration:40,
 });
 
 const clamp=(value,min,max)=>Math.max(min,Math.min(max,value));
 
 export function verticalTarget(lift,clearance){
-  lift=clamp(lift,-1,1);
-  if(lift>=0)return lift*VERTICAL_FLIGHT.climbSpeed;
-  const blend=clamp((clearance-VERTICAL_FLIGHT.precisionClearance)/(VERTICAL_FLIGHT.fullDescentClearance-VERTICAL_FLIGHT.precisionClearance),0,1);
+  const c=VERTICAL_FLIGHT;lift=clamp(lift,-1,1);
+  const high=Math.max(0,clearance-c.fastClearance);
+  // v² = v0² + 2·a·h: a constant-deceleration curve back to the low-air limit,
+  // so following it never needs more than descentBrake (no kink at 30 m).
+  if(lift>=0)return lift*Math.min(c.maxClimbSpeed,Math.sqrt(c.climbSpeed**2+2*c.climbGain*high));
+  if(high>0)return lift*Math.min(c.maxDescentSpeed,Math.sqrt(c.descentSpeed**2+2*c.descentBrake*high));
+  const blend=clamp((clearance-c.precisionClearance)/(c.fullDescentClearance-c.precisionClearance),0,1);
   const smooth=blend*blend*(3-2*blend);
-  return lift*(VERTICAL_FLIGHT.nearSurfaceDescentSpeed+(VERTICAL_FLIGHT.descentSpeed-VERTICAL_FLIGHT.nearSurfaceDescentSpeed)*smooth);
+  return lift*(c.nearSurfaceDescentSpeed+(c.descentSpeed-c.nearSurfaceDescentSpeed)*smooth);
 }
 
 // Integrate a first-order velocity controller exactly, including its bounded
@@ -51,9 +65,12 @@ export function stepVertical(state,lift,dt){
   const surface=supportingSurfaceHeight(state.x,state.y,state.z);
   const released=lift===0;
   const response=released?VERTICAL_FLIGHT.releaseResponse:VERTICAL_FLIGHT.commandResponse;
-  const acceleration=released?VERTICAL_FLIGHT.releaseAcceleration:VERTICAL_FLIGHT.commandAcceleration;
   const steps=Math.ceil(dt/VERTICAL_FLIGHT.maxSubstep),h=dt/steps;
   for(let i=0;i<steps;i++){
+    // Faster vertical speeds brake harder, so a release or reversal from a
+    // high-air descent does not overshoot by tens of metres. At or below the
+    // low-air limits (8 m/s) the original 20 / 16 m/s² are unchanged.
+    const fast=Math.abs(vz),acceleration=Math.min(VERTICAL_FLIGHT.maxAcceleration,released?Math.max(VERTICAL_FLIGHT.releaseAcceleration,VERTICAL_FLIGHT.releaseAcceleration*fast/VERTICAL_FLIGHT.descentSpeed):Math.max(VERTICAL_FLIGHT.commandAcceleration,2*fast));
     const clearance=Math.max(0,state.z+dz-surface-VERTICAL_FLIGHT.contactOffset);
     const next=advance(vz,verticalTarget(lift,clearance),h,response,acceleration);
     vz=next.vz;dz+=next.dz;

@@ -8,7 +8,8 @@ assert.equal(getVehicle('not-an-aircraft').id,'whoop75');
 const bounds=[],counts=[];
 for(const v of VEHICLES){
  const {group,propellers,preset}=createVehicle(v.id);assert.equal(group.userData.vehicleId,v.id);assert.equal(preset.id,v.id);assert.equal(propellers.length,4);assert.ok(propellers.every(p=>p.children.length===v.blades));
- assert.equal(group.children.filter(o=>o.geometry?.type==='TorusGeometry').length,v.guards?8:0);
+ // Guards are one lathe duct each; the bead rims replaced separate torus meshes.
+ assert.equal(group.children.filter(o=>o.name==='duct'&&o.geometry?.type==='LatheGeometry').length,v.guards?4:0);
  bounds.push(new T.Box3().setFromObject(group).getSize(new T.Vector3()).x);counts.push(group.children.length);
  const geometry=group.children.find(o=>o.geometry).geometry;let disposed=false;geometry.addEventListener('dispose',()=>disposed=true);disposeVehicle(group);assert.equal(disposed,true);
 }
